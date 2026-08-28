@@ -202,15 +202,36 @@ function submitReturnItem(payload) {
       return { success: false, message: 'รหัสนิสิตไม่ตรงกับรายการนี้' };
     }
 
-    // --- อัปโหลดรูปภาพ Base64 ลง Drive ---
+    // --- อัปโหลดรูปภาพ Base64 ลง Drive (พร้อมระบบป้องกัน Error สิทธิ์โฟลเดอร์) ---
     let imageUrl = '';
     if (payload.imageBase64 && payload.imageMimeType) {
-      const decoded  = Utilities.base64Decode(payload.imageBase64);
-      const blob     = Utilities.newBlob(decoded, payload.imageMimeType, 'return_' + Date.now() + '.jpg');
-      const folder   = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-      const file     = folder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      imageUrl = 'https://lh3.googleusercontent.com/d/' + file.getId();
+      try {
+        const decoded  = Utilities.base64Decode(payload.imageBase64);
+        const blob     = Utilities.newBlob(decoded, payload.imageMimeType, 'return_' + Date.now() + '.jpg');
+        
+        let folder;
+        try {
+          folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+        } catch (eFolder) {
+          // ถ้าเข้าถึง Folder ID ไม่ได้ (เช่น สิทธิ์ไม่พอ หรือ ID ผิด) ให้เซฟลง Root Drive
+          Logger.log('Cannot access folder ID, fallback to root: ' + eFolder.message);
+          folder = DriveApp.getRootFolder();
+        }
+
+        const file = folder.createFile(blob);
+
+        // พยายามเปิดแชร์ไฟล์ (หากติด Policy ขององค์กร จะไม่ทำให้ระบบล่ม)
+        try {
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch (eShare) {
+          Logger.log('Set sharing skipped: ' + eShare.message);
+        }
+
+        imageUrl = 'https://lh3.googleusercontent.com/d/' + file.getId();
+      } catch (eUpload) {
+        Logger.log('Image upload error: ' + eUpload.message);
+        imageUrl = '';
+      }
     }
 
     // --- Append ลงแท็บ "คืนอุปกรณ์" ---
