@@ -22,6 +22,9 @@ async function apiGet(action, params = {}) {
 async function apiPost(action, data = {}) {
   const response = await fetch(CONFIG.API_URL, {
     method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
     redirect: "follow",
     body: JSON.stringify({ action, ...data })
   });
