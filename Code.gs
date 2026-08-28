@@ -12,6 +12,17 @@ const DRIVE_FOLDER_ID = '1AlycOE3qm-PbYqXcN44-bObCEYxiyJwTszIaqmAseJDvob53bXPfCq
 const SHEET_BORROW    = 'ยืมอุปกรณ์';
 const SHEET_RETURN    = 'คืนอุปกรณ์';
 
+/**
+ * ──────────────────────────────────────────────
+ * ฟังก์ชันสำหรับกด Run ใน Apps Script Editor 1 ครั้ง
+ * เพื่อเปิดสิทธิ์การเข้าถึง Google Drive (DriveApp)
+ * ──────────────────────────────────────────────
+ */
+function authorizeDrive() {
+  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+  Logger.log("Drive Access OK! Folder Name: " + folder.getName());
+}
+
 /* ──────────────────────────────────────────────
  * API Router – doGet (GET Requests)
  * ────────────────────────────────────────────── */
