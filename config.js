@@ -8,7 +8,7 @@
 
 const CONFIG = {
   // นำ Web App URL ที่ได้จากขั้นตอน Deploy ใน Google Apps Script มาใส่ตรงนี้
-  API_URL: "https://script.google.com/macros/s/AKfycbz_placeholder/exec"
+  API_URL: "https://script.google.com/macros/s/AKfycbxOQWoSdrKBpXayVi3FZGHOH3cwZKO0TWCOoWVCV6V9md1j0LZE8AogNtevzChPeyiI/exec"
 };
 
 // API Helper Functions
