@@ -167,8 +167,8 @@
       'เลยกำหนดคืน': { bg: 'bg-red-50 border-red-300',       text: 'text-red-700',     dot: 'bg-red-500' }
     };
     var s = map[status] || map['กำลังยืม'];
-    return '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ' + s.bg + ' ' + s.text + '">' +
-           '<span class="w-2 h-2 rounded-full ' + s.dot + ' badge-dot"></span>' + status + '</span>';
+    return '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap shrink-0 ' + s.bg + ' ' + s.text + '">' +
+           '<span class="w-2 h-2 rounded-full ' + s.dot + ' badge-dot shrink-0"></span>' + escHtml(status) + '</span>';
   }
 
   function buildCard(item) {
@@ -180,10 +180,10 @@
     return '<div class="card shadow-sm">' +
         '<div class="overflow-hidden bg-gray-100">' + imgHtml + '</div>' +
         '<div class="p-5 space-y-4">' +
-          '<div class="flex items-start justify-between gap-2">' +
-            '<div>' +
-              '<h3 class="text-xl font-bold text-gray-900 leading-tight">' + escHtml(item.nickname) + '</h3>' +
-              '<p class="text-xs font-bold text-[#ea580c] mt-0.5">' + escHtml(item.department) + '</p>' +
+          '<div class="flex items-start justify-between gap-3">' +
+            '<div class="min-w-0 flex-1">' +
+              '<h3 class="text-xl font-bold text-gray-900 leading-tight truncate">' + escHtml(item.nickname) + '</h3>' +
+              '<p class="text-xs font-bold text-[#ea580c] mt-0.5 truncate">' + escHtml(item.department) + '</p>' +
             '</div>' +
             statusBadge(item.status) +
           '</div>' +

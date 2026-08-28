@@ -333,8 +333,8 @@
       'เลยกำหนดคืน': { bg:'bg-red-50 border-red-300',       text:'text-red-700',     dot:'bg-red-500' }
     };
     var s = map[status] || map['กำลังยืม'];
-    return '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ' + s.bg + ' ' + s.text + '">' +
-           '<span class="w-1.5 h-1.5 rounded-full ' + s.dot + '"></span>' + escHtml(status) + '</span>';
+    return '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap shrink-0 ' + s.bg + ' ' + s.text + '">' +
+           '<span class="w-1.5 h-1.5 rounded-full ' + s.dot + ' shrink-0"></span>' + escHtml(status) + '</span>';
   }
 
   function renderMyItems() {
