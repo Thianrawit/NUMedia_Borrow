@@ -235,24 +235,25 @@ function submitReturnItem(payload) {
     }
 
     // --- Append ลงแท็บ "คืนอุปกรณ์" ---
-    const timestamp  = new Date();
-    const returnDate = payload.returnDate || Utilities.formatDate(timestamp, 'Asia/Bangkok', 'yyyy-MM-dd');
+    const timestamp = new Date();
+    // จัดรูปแบบวันที่และเวลา เช่น 24/8/2026, 21:21:00
+    const returnDateTimeFormatted = Utilities.formatDate(timestamp, 'Asia/Bangkok', 'd/M/yyyy, HH:mm:ss');
 
+    // Mapping ตาม Col A–M (idx 0–12)
     const newRow = [
-      timestamp,              // Col A (idx 0) – ประทับเวลา
-      emailVal,               // Col B (idx 1) – อีเมล
-      nameVal,                // Col C (idx 2) – ชื่อ-นามสกุล
-      nicknameVal,            // Col D (idx 3) – ชื่อเล่น
-      sidVal,                 // Col E (idx 4) – รหัสนิสิต
-      deptVal,                // Col F (idx 5) – ฝ่าย
-      contactVal,             // Col G (idx 6) – ช่องทางติดต่อ
-      itemsVal,               // Col H (idx 7) – รายชื่ออุปกรณ์
-      borrowDateVal,          // Col I (idx 8) – วันที่ยืม
-      imageUrl,               // Col J (idx 9) – รูปอุปกรณ์ที่คืน
-      payload.toldWhom || '', // Col K (idx 10) – ได้บอกใครบ้าง
-      payload.roomOpener||'', // Col L (idx 11) – ใครเป็นคนเปิดห้องให้
-      '',                     // Col M (idx 12) – ว่าง
-      returnDate              // Col N (idx 13) – วันที่คืน
+      timestamp,                // Col A (idx 0) – ประทับเวลา
+      emailVal,                 // Col B (idx 1) – อีเมล
+      nameVal,                  // Col C (idx 2) – ชื่อ-นามสกุล
+      nicknameVal,              // Col D (idx 3) – ชื่อเล่น
+      sidVal,                   // Col E (idx 4) – รหัสนิสิต
+      deptVal,                  // Col F (idx 5) – ฝ่าย
+      contactVal,               // Col G (idx 6) – ช่องทางติดต่อ
+      itemsVal,                 // Col H (idx 7) – รายชื่ออุปกรณ์
+      borrowDateVal,            // Col I (idx 8) – วันที่ยืม
+      imageUrl,                 // Col J (idx 9) – รูปอุปกรณ์ที่คืน
+      payload.toldWhom || '',   // Col K (idx 10) – ได้บอกใครบ้าง
+      payload.roomOpener || '', // Col L (idx 11) – ใครเป็นคนเปิดห้องให้
+      returnDateTimeFormatted   // Col M (idx 12) – วันที่คืน เช่น 24/8/2026, 21:21:00
     ];
     returnSheet.appendRow(newRow);
 

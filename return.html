@@ -437,8 +437,10 @@
     if (!compressedBase64) { Swal.fire({ icon:'warning', title:'กรุณาอัปโหลดรูปหลักฐานการคืน' }); return; }
     setSubmitLoading(true);
 
+    const targetRowIndex = returningItem.rowIndex;
+
     const payload = {
-      rowIndex: returningItem.rowIndex,
+      rowIndex: targetRowIndex,
       studentId: currentUser.studentId,
       returnDate: returnDate,
       toldWhom: document.getElementById('toldWhom').value.trim(),
@@ -454,9 +456,8 @@
       if (res.success) {
         closeReturnModal();
         Swal.fire({ icon:'success', title:'สำเร็จ!', text: res.message }).then(function() {
-          currentItems = currentItems.filter(function(it) { return it.rowIndex !== returningItem.rowIndex; });
+          currentItems = currentItems.filter(function(it) { return it.rowIndex !== targetRowIndex; });
           renderMyItems();
-          returningItem = null;
         });
       } else {
         Swal.fire({ icon:'error', title:'ไม่สำเร็จ', text: res.message });
