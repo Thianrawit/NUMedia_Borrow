@@ -94,9 +94,20 @@ function getPublicBorrowList() {
 
   for (let i = 1; i < data.length; i++) {
     const row    = data[i];
-    const status = (row[14] || '').toString().trim(); // Col O (idx 14)
+    const items  = (row[8] || '').toString().trim(); // Col I – รายชื่ออุปกรณ์
+    const name   = (row[3] || '').toString().trim(); // Col D – ชื่อ-นามสกุล
+    let status   = (row[14] || '').toString().trim(); // Col O (idx 14)
 
-    if (status === 'คืนแล้ว' || status === '') continue;
+    // ข้ามแถวที่ว่างเปล่า
+    if (!items && !name) continue;
+
+    // ข้ามรายการที่คืนแล้ว
+    if (status === 'คืนแล้ว') continue;
+
+    // ถ้าสถานะว่างเปล่า (ของเพิ่งกรอกเข้ามา) ให้ถือว่าเป็น "กำลังยืม"
+    if (!status) {
+      status = 'กำลังยืม';
+    }
 
     result.push({
       nickname:   row[4]  || '',                          // Col E – ชื่อเล่น
@@ -135,7 +146,7 @@ function verifyLoginAndGetBorrows(email, studentId) {
     const row       = data[i];
     const rowEmail  = (row[1] || '').toString().toLowerCase().trim();   // Col B
     const rowSid    = (row[5] || '').toString().replace(/\D/g, '');      // Col F
-    const rowStatus = (row[14] || '').toString().trim();                  // Col O
+    let rowStatus   = (row[14] || '').toString().trim();                  // Col O
 
     if (rowEmail === email && rowSid === studentId) {
       if (!user) {
@@ -147,16 +158,22 @@ function verifyLoginAndGetBorrows(email, studentId) {
           department: row[6] || ''   // Col G – ฝ่าย
         };
       }
-      if (rowStatus !== 'คืนแล้ว' && rowStatus !== '') {
-        items.push({
-          rowIndex:   i + 1,                            // 1-based row number ใน Sheet
-          items:      row[8]  || '',                     // Col I
-          borrowDate: formatDate_(row[9]),               // Col J
-          dueDate:    formatDate_(row[13]),              // Col N
-          imageUrl:   convertDriveUrl_(row[10] || ''),   // Col K
-          status:     rowStatus                          // Col O
-        });
+      // ข้ามรายการที่คืนแล้ว
+      if (rowStatus === 'คืนแล้ว') continue;
+
+      // ถ้าสถานะว่างเปล่า (เพิ่งยืมเข้ามา) ให้ถือว่าเป็น "กำลังยืม"
+      if (!rowStatus) {
+        rowStatus = 'กำลังยืม';
       }
+
+      items.push({
+        rowIndex:   i + 1,                            // 1-based row number ใน Sheet
+        items:      row[8]  || '',                     // Col I
+        borrowDate: formatDate_(row[9]),               // Col J
+        dueDate:    formatDate_(row[13]),              // Col N
+        imageUrl:   convertDriveUrl_(row[10] || ''),   // Col K (แปลง URL)
+        status:     rowStatus                          // Col O
+      });
     }
   }
 
