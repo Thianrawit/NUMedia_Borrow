@@ -1,0 +1,12 @@
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Internal / Agent logs
+.agentrules
+ReviewIDE.txt
+resize_logo.ps1
+logo_base64.txt
+logo_small.png
