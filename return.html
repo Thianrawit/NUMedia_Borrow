@@ -475,7 +475,7 @@
   }
 
   function escHtml(str) { if (!str) return ''; var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-  function escAttr(str) { return (str || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+  function escAttr(str) { return (str || '').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
 
   document.getElementById('loginSid').addEventListener('keydown', function(e) { if (e.key === 'Enter') handleLogin(); });
   document.getElementById('loginEmail').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('loginSid').focus(); });
