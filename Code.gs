@@ -116,7 +116,7 @@ function getPublicBorrowList() {
       borrowDate: formatDate_(row[9]),                   // Col J – วันที่ยืม
       dueDate:    formatDate_(row[13]),                  // Col N – วันที่กำหนดคืน
       status:     status,                                 // Col O – สถานะ
-      imageUrl:   convertDriveUrl_(row[10] || '')         // Col K – รูปอุปกรณ์ (แปลงให้โหลดได้)
+      imageUrls:  convertDriveUrls_(row[10] || '')        // Col K – รูปอุปกรณ์หลายรูป (แปลงให้โหลดได้)
     });
   }
 
@@ -171,7 +171,7 @@ function verifyLoginAndGetBorrows(email, studentId) {
         items:      row[8]  || '',                     // Col I
         borrowDate: formatDate_(row[9]),               // Col J
         dueDate:    formatDate_(row[13]),              // Col N
-        imageUrl:   convertDriveUrl_(row[10] || ''),   // Col K (แปลง URL)
+        imageUrls:  convertDriveUrls_(row[10] || ''),  // Col K – รูปอุปกรณ์หลายรูป (แปลง URL)
         status:     rowStatus                          // Col O
       });
     }
@@ -304,7 +304,7 @@ function formatDate_(val) {
 }
 
 /* ──────────────────────────────────────────────
- * Helper – แปลง Drive URL ให้โหลดรูปได้จริง
+ * Helper – แปลง Drive URL ให้โหลดรูปได้จริง (single URL)
  * ────────────────────────────────────────────── */
 function convertDriveUrl_(url) {
   if (!url) return '';
@@ -326,4 +326,21 @@ function convertDriveUrl_(url) {
   }
 
   return url;
+}
+
+/* ──────────────────────────────────────────────
+ * Helper – แปลง Drive URLs หลายตัว (คั่นด้วย ,) ให้เป็น Array
+ * ────────────────────────────────────────────── */
+function convertDriveUrls_(rawUrls) {
+  if (!rawUrls) return [];
+  var parts = rawUrls.toString().split(',');
+  var result = [];
+  for (var i = 0; i < parts.length; i++) {
+    var url = parts[i].trim();
+    if (url) {
+      var converted = convertDriveUrl_(url);
+      if (converted) result.push(converted);
+    }
+  }
+  return result;
 }

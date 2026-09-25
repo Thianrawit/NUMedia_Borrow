@@ -64,6 +64,60 @@
       animation: shimmer 1.5s infinite;
       border-radius: 1.25rem;
     }
+
+    /* ═══ Image Carousel ═══ */
+    .carousel-wrap { position: relative; overflow: hidden; }
+    .carousel-track {
+      display: flex;
+      transition: transform .35s cubic-bezier(.4,0,.2,1);
+    }
+    .carousel-track img {
+      width: 100%; height: 12rem; object-fit: cover; flex-shrink: 0;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .carousel-track img:hover { opacity: .92; }
+
+    .carousel-btn {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,.85); backdrop-filter: blur(4px);
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 5;
+      opacity: 0; transition: opacity .2s, background .15s;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    }
+    .carousel-wrap:hover .carousel-btn { opacity: 1; }
+    .carousel-btn:hover { background: #fff; }
+    .carousel-btn.prev { left: 8px; }
+    .carousel-btn.next { right: 8px; }
+    .carousel-btn svg { width: 16px; height: 16px; color: #374151; }
+
+    .carousel-dots {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 5px; z-index: 5;
+    }
+    .carousel-dots span {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: rgba(255,255,255,.5);
+      border: 1px solid rgba(0,0,0,.1);
+      transition: background .2s, transform .2s;
+      cursor: pointer;
+    }
+    .carousel-dots span.active {
+      background: #fff;
+      transform: scale(1.25);
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+
+    .carousel-counter {
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+      color: #fff; font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 999px; z-index: 5;
+    }
   </style>
 </head>
 
@@ -152,9 +206,20 @@
     <span>ยืมอุปกรณ์</span>
   </a>
 
-  <!-- ═══════════════ IMAGE MODAL ═══════════════ -->
+  <!-- ═══════════════ IMAGE MODAL (multi-image) ═══════════════ -->
   <div id="imgModal" class="hidden fixed inset-0 z-[999] bg-black/70 flex items-center justify-center p-4 cursor-pointer" onclick="closeImgModal()">
-    <img id="imgModalSrc" src="" class="max-w-full max-h-[85vh] rounded-2xl shadow-2xl" />
+    <!-- Prev button -->
+    <button id="imgModalPrev" class="hidden absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-[1000] w-11 h-11 rounded-full bg-white/90 backdrop-blur-md shadow-lg flex items-center justify-center hover:bg-white transition-all" onclick="modalNav(-1,event)" aria-label="รูปก่อนหน้า">
+      <svg class="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <!-- Image -->
+    <img id="imgModalSrc" src="" class="max-w-full max-h-[85vh] rounded-2xl shadow-2xl" onclick="event.stopPropagation()" />
+    <!-- Next button -->
+    <button id="imgModalNext" class="hidden absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-[1000] w-11 h-11 rounded-full bg-white/90 backdrop-blur-md shadow-lg flex items-center justify-center hover:bg-white transition-all" onclick="modalNav(1,event)" aria-label="รูปถัดไป">
+      <svg class="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </button>
+    <!-- Counter -->
+    <div id="imgModalCounter" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-black/60 backdrop-blur-md text-white text-sm font-bold px-4 py-1.5 rounded-full"></div>
   </div>
 
 <script>
@@ -171,11 +236,47 @@
            '<span class="w-2 h-2 rounded-full ' + s.dot + ' badge-dot shrink-0"></span>' + escHtml(status) + '</span>';
   }
 
+  var _carouselId = 0;
+
   function buildCard(item) {
-    var hasImage = item.imageUrl && item.imageUrl.trim() !== '';
-    var imgHtml = hasImage
-      ? '<img src="' + escHtml(item.imageUrl) + '" alt="รูปอุปกรณ์" class="w-full h-48 object-cover cursor-pointer hover:opacity-95 transition-opacity" onclick="openImgModal(\'' + escHtml(item.imageUrl) + '\')" onerror="this.parentElement.innerHTML=fallbackImg()" />'
-      : fallbackImg();
+    var urls = item.imageUrls || [];
+    // backward compat: if old API still sends imageUrl as string
+    if (urls.length === 0 && item.imageUrl && item.imageUrl.trim()) {
+      urls = [item.imageUrl.trim()];
+    }
+    var hasImages = urls.length > 0;
+    var cid = _carouselId++;
+    var imgHtml;
+
+    if (!hasImages) {
+      imgHtml = fallbackImg();
+    } else if (urls.length === 1) {
+      // Single image — no carousel needed
+      imgHtml = '<div class="carousel-wrap">' +
+        '<img src="' + escHtml(urls[0]) + '" alt="รูปอุปกรณ์" class="w-full" style="height:12rem;object-fit:cover;cursor:pointer" onclick="openImgModal([&quot;' + urls.map(escHtml).join('&quot;,&quot;') + '&quot;],0)" onerror="this.parentElement.innerHTML=fallbackImg()" />' +
+      '</div>';
+    } else {
+      // Multiple images — carousel
+      var imgsStr = urls.map(function(u, idx) {
+        return '<img src="' + escHtml(u) + '" alt="รูปอุปกรณ์ ' + (idx+1) + '" onclick="openImgModal([&quot;' + urls.map(escHtml).join('&quot;,&quot;') + '&quot;],' + idx + ')" onerror="this.style.display=\'none\'" />';
+      }).join('');
+
+      var dotsStr = urls.map(function(_, idx) {
+        return '<span onclick="goSlide(' + cid + ',' + idx + ')" class="' + (idx === 0 ? 'active' : '') + '"></span>';
+      }).join('');
+
+      imgHtml = '<div class="carousel-wrap" id="cw' + cid + '">' +
+        '<div class="carousel-track" id="ct' + cid + '">' + imgsStr + '</div>' +
+        '<button class="carousel-btn prev" onclick="slideCarousel(' + cid + ',-1)" aria-label="ก่อนหน้า">' +
+          '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<button class="carousel-btn next" onclick="slideCarousel(' + cid + ',1)" aria-label="ถัดไป">' +
+          '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>' +
+        '</button>' +
+        '<div class="carousel-dots" id="cd' + cid + '">' + dotsStr + '</div>' +
+        '<div class="carousel-counter">' + '1/' + urls.length + '</div>' +
+      '</div>';
+    }
 
     return '<div class="card shadow-sm">' +
         '<div class="overflow-hidden bg-gray-100">' + imgHtml + '</div>' +
@@ -198,14 +299,95 @@
         '</div></div>';
   }
 
+  // ── Carousel state tracking ──
+  var _carouselStates = {};
+
+  function slideCarousel(cid, dir) {
+    var track = document.getElementById('ct' + cid);
+    if (!track) return;
+    var total = track.children.length;
+    if (total <= 1) return;
+    var cur = _carouselStates[cid] || 0;
+    cur = (cur + dir + total) % total;
+    _carouselStates[cid] = cur;
+    track.style.transform = 'translateX(-' + (cur * 100) + '%)';
+    updateDots(cid, cur, total);
+  }
+
+  function goSlide(cid, idx) {
+    var track = document.getElementById('ct' + cid);
+    if (!track) return;
+    var total = track.children.length;
+    _carouselStates[cid] = idx;
+    track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+    updateDots(cid, idx, total);
+  }
+
+  function updateDots(cid, cur, total) {
+    var dots = document.getElementById('cd' + cid);
+    if (!dots) return;
+    for (var i = 0; i < dots.children.length; i++) {
+      dots.children[i].classList.toggle('active', i === cur);
+    }
+    // Update counter
+    var wrap = document.getElementById('cw' + cid);
+    if (wrap) {
+      var counter = wrap.querySelector('.carousel-counter');
+      if (counter) counter.textContent = (cur + 1) + '/' + total;
+    }
+  }
+
   function fallbackImg() {
-    return '<div class="img-placeholder w-full h-48">' +
+    return '<div class="img-placeholder w-full" style="height:12rem">' +
       '<svg class="w-14 h-14 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">' +
         '<path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>' +
       '</svg></div>';
   }
 
+  // ── Modal with multi-image navigation ──
+  var _modalUrls = [];
+  var _modalIdx = 0;
+
+  function openImgModal(urls, idx) {
+    if (typeof urls === 'string') { urls = [urls]; idx = 0; }
+    _modalUrls = urls;
+    _modalIdx = idx || 0;
+    showModalImage();
+    document.getElementById('imgModal').classList.remove('hidden');
+  }
+
+  function showModalImage() {
+    document.getElementById('imgModalSrc').src = _modalUrls[_modalIdx];
+    var counterEl = document.getElementById('imgModalCounter');
+    var prevBtn = document.getElementById('imgModalPrev');
+    var nextBtn = document.getElementById('imgModalNext');
+    if (_modalUrls.length > 1) {
+      counterEl.textContent = (_modalIdx + 1) + ' / ' + _modalUrls.length;
+      counterEl.classList.remove('hidden');
+      prevBtn.classList.remove('hidden');
+      nextBtn.classList.remove('hidden');
+    } else {
+      counterEl.classList.add('hidden');
+      prevBtn.classList.add('hidden');
+      nextBtn.classList.add('hidden');
+    }
+  }
+
+  function modalNav(dir, e) {
+    if (e) e.stopPropagation();
+    _modalIdx = (_modalIdx + dir + _modalUrls.length) % _modalUrls.length;
+    showModalImage();
+  }
+
+  function closeImgModal() {
+    document.getElementById('imgModal').classList.add('hidden');
+    document.getElementById('imgModalSrc').src = '';
+  }
+
+  // ═══ Render & Search ═══
   function renderCards(items) {
+    _carouselId = 0;
+    _carouselStates = {};
     var grid  = document.getElementById('cardsGrid');
     var empty = document.getElementById('emptyState');
     var skel  = document.getElementById('skeletonGrid');
@@ -236,15 +418,6 @@
     });
     renderCards(filtered);
   });
-
-  function openImgModal(url) {
-    document.getElementById('imgModalSrc').src = url;
-    document.getElementById('imgModal').classList.remove('hidden');
-  }
-  function closeImgModal() {
-    document.getElementById('imgModal').classList.add('hidden');
-    document.getElementById('imgModalSrc').src = '';
-  }
 
   function escHtml(str) {
     if (!str) return '';
