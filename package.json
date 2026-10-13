@@ -1,0 +1,17 @@
+{
+  "name": "numedia-renew",
+  "version": "1.0.0",
+  "description": "NU Media Club Equipment Borrowing System",
+  "scripts": {
+    "build:css": "npx tailwindcss -i ./src/input.css -o ./css/tailwind.css --minify",
+    "watch:css": "npx tailwindcss -i ./src/input.css -o ./css/tailwind.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.30",
+    "tailwindcss": "3.4"
+  }
+}

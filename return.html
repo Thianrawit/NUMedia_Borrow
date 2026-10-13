@@ -10,20 +10,8 @@
   <link rel="icon" type="image/png" href="icon.png" />
   <link rel="apple-touch-icon" href="icon.png" />
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter','Noto Sans Thai','sans-serif'] },
-          colors: {
-            brand: { 50:'#fff7ed',100:'#ffedd5',200:'#fed7aa',300:'#fdba74',400:'#fb923c',500:'#f97316',600:'#ea580c',700:'#c2410c',800:'#9a3412',900:'#7c2d12' }
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Local Compiled Tailwind CSS -->
+  <link rel="stylesheet" href="css/tailwind.css" />
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -34,7 +22,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <!-- Config & API Helper (Cache Buster) -->
-  <script src="config.js?v=3"></script>
+  <script src="config.js?v=4"></script>
 
   <style>
     * { box-sizing: border-box; }
@@ -82,6 +70,26 @@
 
     @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
     .badge-dot { animation: pulse-dot 2s infinite; }
+
+    .hidden { display: none !important; }
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; padding: 0;
+    }
+    .modal-overlay.hidden { display: none !important; }
+    @media (min-width: 640px) { .modal-overlay { align-items: center; padding: 1rem; } }
+    .modal-content {
+      background: #fff; width: 100%; max-width: 32rem;
+      border-radius: 1.5rem 1.5rem 0 0; max-height: 90vh; overflow-y: auto;
+      animation: fadeUp .3s ease-out;
+    }
+    @media (min-width: 640px) { .modal-content { border-radius: 1.5rem; } }
+
+    .dropzone-active {
+      border-color: #f97316 !important;
+      background-color: #fff7ed !important;
+      transform: scale(1.01);
+    }
   </style>
 </head>
 
@@ -95,7 +103,7 @@
         class="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all cursor-pointer text-white no-underline shrink-0"
         title="กลับหน้ารายการยืม"
       >
-        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
       </a>
@@ -108,30 +116,38 @@
 
   <main class="max-w-2xl mx-auto px-4 py-8">
 
-    <!-- ═══════════════ SECTION 1: LOGIN FORM ═══════════════ -->
+    <!-- ═══════════════ SECTION 1: LOGIN ═══════════════ -->
     <section id="loginSection" class="fade-up">
-      <div class="bg-white border border-gray-200 rounded-3xl p-6 sm:p-10 shadow-sm">
-        <!-- Logo -->
-        <div class="w-40 h-40 mx-auto flex items-center justify-center">
-          <img src="icon.png" alt="NU Media Logo" class="w-40 h-40 object-contain" />
+      <div class="bg-white border border-gray-200 rounded-3xl p-6 sm:p-10 shadow-sm max-w-md mx-auto">
+        <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center">
+          <svg class="w-8 h-8 text-[#f97316]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+          </svg>
         </div>
-
-        <h2 class="text-center text-2xl font-extrabold text-gray-900 mb-1">เข้าสู่ระบบ</h2>
-        <p class="text-center text-sm text-gray-500 mb-8">กรอกอีเมลและรหัสนิสิตเพื่อค้นหารายการยืมของคุณ</p>
+        <h2 class="text-center text-2xl font-extrabold text-gray-900 mb-1">ยืนยันตัวตน</h2>
+        <p class="text-center text-sm text-gray-500 mb-8">กรอกอีเมลและรหัสนิสิตที่ใช้ตอนยืมอุปกรณ์</p>
 
         <div class="mb-5">
-          <label class="block text-sm font-bold text-gray-700 mb-2" for="loginEmail">อีเมล</label>
-          <input id="loginEmail" type="email" placeholder="example@nu.ac.th หรือ example@gmail.com"
-            class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+          <label class="block text-sm font-bold text-gray-700 mb-2" for="loginEmail">อีเมล (Google Account)</label>
+          <input
+            id="loginEmail"
+            type="email"
+            placeholder="example@nu.ac.th"
+            class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400"
+          />
         </div>
 
         <div class="mb-8">
           <label class="block text-sm font-bold text-gray-700 mb-2" for="loginSid">รหัสนิสิต</label>
-          <input id="loginSid" type="text" placeholder="6xxxxxxx" inputmode="numeric"
-            class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+          <input
+            id="loginSid"
+            type="text"
+            placeholder="65xxxxxx"
+            class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400"
+          />
         </div>
 
-        <button id="loginBtn" onclick="handleLogin()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer shadow-md">
+        <button id="loginBtn" onclick="handleLogin()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer shadow-md border-none">
           <span id="loginBtnText">เข้าสู่ระบบเพื่อคืนอุปกรณ์</span>
           <div id="loginSpinner" class="spinner hidden"></div>
         </button>
@@ -145,20 +161,20 @@
       </div>
     </section>
 
-    <!-- ═══════════════ SECTION 2: NO HISTORY FOUND (คนไม่เคยยืม) ═══════════════ -->
+    <!-- ═══════════════ SECTION 2: NO HISTORY ═══════════════ -->
     <section id="noHistorySection" class="hidden fade-up">
-      <div class="bg-white border border-gray-200 rounded-3xl p-8 sm:p-12 text-center shadow-sm">
-        <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center">
-          <svg class="w-10 h-10 text-[#f97316]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+      <div class="bg-white border border-gray-200 rounded-3xl p-8 sm:p-12 text-center shadow-sm max-w-md mx-auto">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center">
+          <svg class="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
           </svg>
         </div>
-
-        <h2 class="text-2xl font-extrabold text-gray-900 mb-2">ไม่มีรายการยืมอุปกรณ์ในตอนนี้</h2>
-        <p class="text-base text-gray-500 mb-8">ไม่พบประวัติการยืมอุปกรณ์ของคุณในระบบ</p>
-
-        <button onclick="handleBackToLogin()" class="w-full sm:w-auto px-8 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-sm transition-all cursor-pointer">
-          ← กลับไปหน้าเข้าสู่ระบบ
+        <h3 class="text-xl font-extrabold text-gray-900 mb-2">ไม่พบประวัติการยืม</h3>
+        <p class="text-sm text-gray-500 mb-8 leading-relaxed">
+          ไม่พบข้อมูลการยืมที่ตรงกับอีเมลหรือรหัสนิสิตนี้ หรืออุปกรณ์ทั้งหมดได้รับการคืนเรียบร้อยแล้ว
+        </p>
+        <button onclick="handleBackToLogin()" class="btn-primary w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer border-none">
+          ลองใหม่อีกครั้ง
         </button>
       </div>
     </section>
@@ -177,7 +193,7 @@
             <p class="font-extrabold text-gray-900 text-lg" id="userDisplayName"></p>
             <p class="text-xs sm:text-sm font-semibold text-gray-500" id="userDisplayInfo"></p>
           </div>
-          <button onclick="handleLogout()" class="ml-auto text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0">
+          <button onclick="handleLogout()" class="ml-auto text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 border-none">
             ออกจากระบบ
           </button>
         </div>
@@ -194,7 +210,7 @@
       <div class="bg-white w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto fade-up border border-gray-200 shadow-2xl" id="returnModalContent">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-xl font-bold text-gray-900">ยืนยันการคืนอุปกรณ์</h3>
-          <button onclick="closeReturnModal()" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer">
+          <button onclick="closeReturnModal()" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer border-none">
             <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -212,18 +228,18 @@
         </div>
 
         <div class="mb-5">
-          <label class="block text-sm font-bold text-gray-700 mb-2">รูปหลักฐานการคืน <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-bold text-gray-700 mb-2">รูปหลักฐานการคืน (ลากรูปมาวางหรือแตะเพื่อถ่าย) <span class="text-red-500">*</span></label>
           <div id="dropZone" class="border-2 border-dashed border-gray-300 hover:border-[#f97316] bg-gray-50 hover:bg-orange-50/30 rounded-2xl p-6 text-center cursor-pointer transition-colors" onclick="document.getElementById('returnImage').click()">
             <svg class="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
-            <p class="text-sm font-bold text-gray-700">แตะเพื่อถ่ายรูปหรือเลือกไฟล์</p>
+            <p class="text-sm font-bold text-gray-700">ลากรูปภาพมาวางที่นี่ หรือแตะเพื่อเลือกไฟล์</p>
             <p class="text-xs text-gray-400 mt-1">ระบบจะย่อขนาดรูปอัตโนมัติก่อนส่ง</p>
           </div>
           <input id="returnImage" type="file" accept="image/*" class="hidden" onchange="previewImage(this)" />
           <div id="previewContainer" class="hidden mt-3 text-center bg-gray-50 border border-gray-200 rounded-2xl p-4">
             <img id="previewImg" class="img-preview mx-auto shadow-sm" />
-            <button onclick="clearImage()" class="text-xs font-bold text-red-500 hover:text-red-700 mt-3 transition-colors cursor-pointer">ลบรูป / ถ่ายใหม่</button>
+            <button onclick="clearImage()" class="text-xs font-bold text-red-500 hover:text-red-700 mt-3 transition-colors cursor-pointer border-none bg-transparent">ลบรูป / ถ่ายใหม่</button>
           </div>
         </div>
 
@@ -237,10 +253,23 @@
           <input id="roomOpener" type="text" placeholder="เช่น พี่ซี" class="input-field w-full px-4 py-3 rounded-xl text-sm text-gray-800 placeholder-gray-400" />
         </div>
 
-        <button id="submitReturnBtn" onclick="handleSubmitReturn()" class="btn-return w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer shadow-md">
+        <button id="submitReturnBtn" onclick="handleSubmitReturn()" class="btn-return w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer shadow-md border-none">
           <span id="submitBtnText">ยืนยันการคืนอุปกรณ์</span>
           <div id="submitSpinner" class="spinner hidden"></div>
         </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════ MODAL: IMAGE DETAIL FULL VIEW ═══════════════ -->
+    <div id="imgDetailModal" class="hidden modal-overlay" onclick="if(event.target===this)closeImgDetailModal()">
+      <div class="modal-content p-6 fade-up">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-900" id="imgDetailTitle">รูปอุปกรณ์ที่ยืม</h3>
+          <button type="button" onclick="closeImgDetailModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center cursor-pointer border-none">
+            <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <img id="imgDetailSrc" class="w-full max-h-[70vh] object-contain rounded-2xl bg-gray-50 border border-gray-200" />
       </div>
     </div>
 
@@ -253,7 +282,7 @@
   var compressedBase64 = '';
   var compressedMime   = '';
 
-  /* ─── LOGIN ─── */
+  /* ─── LOGIN & SESSION MEMORY ─── */
   async function handleLogin() {
     var email = document.getElementById('loginEmail').value.trim();
     var sid   = document.getElementById('loginSid').value.trim();
@@ -265,6 +294,11 @@
       setLoginLoading(false);
 
       if (res.success) {
+        // Save session memory in localStorage
+        try {
+          localStorage.setItem('nu_return_auth', JSON.stringify({ email: email, studentId: sid }));
+        } catch (e) {}
+
         if (!res.hasHistory || !res.user) {
           showNoHistorySection();
         } else {
@@ -300,11 +334,27 @@
   function handleLogout() {
     currentUser = null;
     currentItems = [];
+    try {
+      localStorage.removeItem('nu_return_auth');
+    } catch (e) {}
     document.getElementById('borrowSection').classList.add('hidden');
     document.getElementById('noHistorySection').classList.add('hidden');
     document.getElementById('loginSection').classList.remove('hidden');
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginSid').value = '';
+  }
+
+  function initReturnAuth() {
+    try {
+      var raw = localStorage.getItem('nu_return_auth');
+      if (!raw) return;
+      var auth = JSON.parse(raw);
+      if (auth && auth.email && auth.studentId) {
+        document.getElementById('loginEmail').value = auth.email;
+        document.getElementById('loginSid').value = auth.studentId;
+        handleLogin();
+      }
+    } catch (e) {}
   }
 
   /* ─── SHOW NO HISTORY SECTION ─── */
@@ -360,7 +410,15 @@
     container.innerHTML = currentItems.map(function(item, idx) {
       var hasImg = item.imageUrl && item.imageUrl.trim() !== '';
       return '<div class="card shadow-sm fade-up" style="animation-delay:' + (idx * 60) + 'ms">' +
-        (hasImg ? '<img src="' + escHtml(item.imageUrl) + '" alt="อุปกรณ์" class="w-full h-48 object-cover" onerror="this.style.display=\'none\'" />' : '') +
+        (hasImg
+          ? '<div class="relative cursor-pointer group" onclick="showImgDetail(\'' + escAttr(item.imageUrl) + '\', \'' + escAttr(item.items) + '\')">' +
+              '<img src="' + escHtml(item.imageUrl) + '" alt="อุปกรณ์" class="w-full h-48 object-cover" onerror="this.style.display=\'none\'" />' +
+              '<div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-bold">' +
+                '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+                'แตะเพื่อดูรูปใหญ่' +
+              '</div>' +
+            '</div>'
+          : '') +
         '<div class="p-5 space-y-4">' +
           '<div class="flex items-start justify-between gap-2">' +
             '<div class="bg-orange-50/70 border border-orange-100 rounded-xl p-3.5 flex-1">' +
@@ -373,16 +431,28 @@
             '<span>📅 ยืม: <strong class="text-gray-800">' + escHtml(item.borrowDate) + '</strong></span>' +
             '<span>⏰ กำหนดคืน: <strong class="text-gray-800">' + escHtml(item.dueDate) + '</strong></span>' +
           '</div>' +
-          '<button onclick="openReturnModal(' + item.rowIndex + ', \'' + escAttr(item.items) + '\')" class="btn-return w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer shadow-sm">' +
+          '<button onclick="openReturnModal(' + item.rowIndex + ', \'' + escAttr(item.items) + '\', \'' + escAttr(item.sourceSheet || 'ยืมอุปกรณ์') + '\')" class="btn-return w-full py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer shadow-sm border-none">' +
             '📦 กดคืนของชิ้นนี้' +
           '</button>' +
         '</div></div>';
     }).join('');
   }
 
+  /* ─── FULL IMAGE MODAL ─── */
+  function showImgDetail(url, title) {
+    document.getElementById('imgDetailSrc').src = url;
+    document.getElementById('imgDetailTitle').textContent = title || 'รูปภาพอุปกรณ์';
+    document.getElementById('imgDetailModal').classList.remove('hidden');
+  }
+
+  function closeImgDetailModal() {
+    document.getElementById('imgDetailModal').classList.add('hidden');
+    document.getElementById('imgDetailSrc').src = '';
+  }
+
   /* ─── RETURN MODAL ─── */
-  function openReturnModal(rowIndex, itemName) {
-    returningItem = { rowIndex: rowIndex, items: itemName };
+  function openReturnModal(rowIndex, itemName, sourceSheet) {
+    returningItem = { rowIndex: rowIndex, items: itemName, sourceSheet: sourceSheet || 'ยืมอุปกรณ์' };
     document.getElementById('returnItemName').textContent = itemName;
     var today = new Date();
     document.getElementById('returnDate').value = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
@@ -397,9 +467,12 @@
     returningItem = null;
   }
 
-  /* ─── IMAGE ─── */
-  function previewImage(input) {
-    if (!input.files || !input.files[0]) return;
+  /* ─── IMAGE DRAG & DROP & PREVIEW ─── */
+  function processReturnImageFile(file) {
+    if (!file || !file.type.match(/^image\//i)) {
+      Swal.fire({ icon:'warning', title:'กรุณาเลือกไฟล์รูปภาพ' });
+      return;
+    }
     var reader = new FileReader();
     reader.onload = function(e) {
       var img = new Image();
@@ -419,7 +492,12 @@
       };
       img.src = e.target.result;
     };
-    reader.readAsDataURL(input.files[0]);
+    reader.readAsDataURL(file);
+  }
+
+  function previewImage(input) {
+    if (!input.files || !input.files[0]) return;
+    processReturnImageFile(input.files[0]);
   }
 
   function clearImage() {
@@ -427,6 +505,29 @@
     document.getElementById('returnImage').value = '';
     document.getElementById('previewContainer').classList.add('hidden');
     document.getElementById('dropZone').classList.remove('hidden');
+  }
+
+  function setupReturnDropZone() {
+    var dropZone = document.getElementById('dropZone');
+    if (!dropZone) return;
+    ['dragenter', 'dragover'].forEach(function(ev) {
+      dropZone.addEventListener(ev, function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.add('dropzone-active');
+      });
+    });
+    ['dragleave', 'dragend', 'drop'].forEach(function(ev) {
+      dropZone.addEventListener(ev, function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.remove('dropzone-active');
+      });
+    });
+    dropZone.addEventListener('drop', function(e) {
+      var dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        processReturnImageFile(dt.files[0]);
+      }
+    });
   }
 
   /* ─── SUBMIT RETURN ─── */
@@ -440,6 +541,7 @@
     const targetRowIndex = returningItem.rowIndex;
 
     const payload = {
+      sourceSheet: returningItem.sourceSheet || 'ยืมอุปกรณ์',
       rowIndex: targetRowIndex,
       studentId: currentUser.studentId,
       returnDate: returnDate,
@@ -453,18 +555,30 @@
       const res = await apiPost('submitReturn', payload);
       setSubmitLoading(false);
 
-      if (res.success) {
+      if (res && res.success) {
         closeReturnModal();
-        Swal.fire({ icon:'success', title:'สำเร็จ!', text: res.message }).then(function() {
-          currentItems = currentItems.filter(function(it) { return it.rowIndex !== targetRowIndex; });
-          renderMyItems();
+        Swal.fire({
+          icon: 'success',
+          title: 'คืนอุปกรณ์สำเร็จ!',
+          text: res.message || 'บันทึกการคืนอุปกรณ์เรียบร้อยแล้ว',
+          confirmButtonColor: '#f97316'
+        }).then(function() {
+          handleLogin();
         });
       } else {
-        Swal.fire({ icon:'error', title:'ไม่สำเร็จ', text: res.message });
+        Swal.fire({
+          icon: 'error',
+          title: 'ไม่สำเร็จ',
+          text: (res && res.message) || 'เกิดข้อผิดพลาดในการบันทึกการคืน'
+        });
       }
     } catch (err) {
       setSubmitLoading(false);
-      Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: err.message });
+      Swal.fire({
+        icon: 'error',
+        title: 'เกิดข้อผิดพลาด',
+        text: err.message
+      });
     }
   }
 
@@ -474,8 +588,14 @@
     document.getElementById('submitSpinner').classList.toggle('hidden', !loading);
   }
 
+  /* ─── UTILS ─── */
   function escHtml(str) { if (!str) return ''; var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
   function escAttr(str) { return (str || '').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    setupReturnDropZone();
+    initReturnAuth();
+  });
 
   document.getElementById('loginSid').addEventListener('keydown', function(e) { if (e.key === 'Enter') handleLogin(); });
   document.getElementById('loginEmail').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('loginSid').focus(); });

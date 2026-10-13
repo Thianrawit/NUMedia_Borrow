@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NU Media Club - Admin Panel" />
+  <title>NU Media Club - Admin Panel</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="apple-touch-icon" href="icon.png" />
+
+  <!-- Local Compiled Tailwind CSS -->
+  <link rel="stylesheet" href="css/tailwind.css" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Config & API Helper (Cache Buster) -->
+  <script src="config.js?v=4"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', 'Noto Sans Thai', sans-serif; background: #f9fafb; min-height: 100vh; }
+
+    .input-field {
+      background: #fff; border: 1px solid #d1d5db;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .input-field:focus {
+      border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,.15); outline: none;
+    }
+    .btn-primary { background: #f97316; transition: background .15s, transform .15s, box-shadow .15s; }
+    .btn-primary:hover:not(:disabled) { background: #ea580c; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(249,115,22,.3); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .eq-card-admin {
+      background: #fff; border: 2px solid #e5e7eb; border-radius: 1.25rem;
+      overflow: hidden; transition: all .15s ease; cursor: pointer;
+    }
+    .eq-card-admin:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.06); }
+    .eq-card-admin.border-green { border-color: #10b981; }
+    .eq-card-admin.border-yellow { border-color: #f59e0b; }
+    .eq-card-admin.border-red { border-color: #ef4444; }
+
+    .spinner { border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; width:20px; height:20px; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    .fade-up { animation: fadeUp .35s ease-out forwards; }
+
+    .hidden { display: none !important; }
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; padding: 0;
+    }
+    .modal-overlay.hidden { display: none !important; }
+    @media (min-width: 640px) { .modal-overlay { align-items: center; padding: 1rem; } }
+    .modal-content {
+      background: #fff; width: 100%; max-width: 32rem;
+      border-radius: 1.5rem 1.5rem 0 0; max-height: 90vh; overflow-y: auto;
+      animation: fadeUp .3s ease-out;
+    }
+    @media (min-width: 640px) { .modal-content { border-radius: 1.5rem; } }
+
+    @keyframes shimmer { 0%{ background-position: -200% 0; } 100%{ background-position: 200% 0; } }
+    .skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 1rem;
+    }
+
+    .dropzone-active {
+      border-color: #f97316 !important;
+      background-color: #fff7ed !important;
+      transform: scale(1.01);
+    }
+  </style>
+</head>
+
+<body class="text-gray-800 antialiased">
+
+  <!-- ═══ HEADER (Shown when Authenticated) ═══ -->
+  <header id="adminHeader" class="sticky top-0 z-50 bg-[#f97316] text-white shadow-md hidden">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all cursor-pointer shrink-0 border-none text-white no-underline" title="กลับหน้าหลัก">
+          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </a>
+        <div class="flex items-center gap-2.5 cursor-pointer select-none" onclick="showAdminView('hub')" title="กลับหน้าเมนูหลัก">
+          <img src="icon.png" alt="Logo" class="w-8 h-8 object-contain shrink-0" onerror="this.style.display='none'">
+          <div>
+            <h1 class="text-lg sm:text-xl font-black tracking-tight text-white leading-tight">NU Media Club</h1>
+            <p class="text-[11px] sm:text-xs text-orange-100 font-medium">Admin Portal</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <div class="hidden sm:flex items-center gap-2 bg-white/15 px-3 py-1.5 rounded-xl text-xs font-bold text-white border border-white/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-300"></span>
+          <span id="adminDisplayName">แอดมิน</span>
+        </div>
+        <button id="logoutBtn" onclick="adminLogout()" class="text-xs font-bold text-white bg-white/20 hover:bg-white/30 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer shrink-0 border-none">
+          ออกจากระบบ
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ FULL-SCREEN LOGIN SECTION (Shown when Unauthenticated) ═══ -->
+  <section id="adminLoginSection" class="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 bg-[#f9fafb] relative">
+    <!-- Quick link back to Home -->
+    <a href="index.html" class="absolute top-5 left-5 inline-flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors bg-white px-3.5 py-2 rounded-xl border border-gray-200 shadow-xs" title="กลับหน้ารายการอุปกรณ์">
+      <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      <span>กลับหน้ารายการอุปกรณ์</span>
+    </a>
+
+    <div class="bg-white border border-gray-200/90 rounded-3xl p-7 sm:p-10 shadow-sm max-w-sm sm:max-w-md w-full mx-auto text-center fade-up">
+      <img src="icon.png" alt="NU Media Club" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 object-contain drop-shadow-sm select-none" onerror="this.style.display='none'">
+      <h1 class="text-2xl font-black text-gray-900 tracking-tight">เข้าสู่ระบบผู้ดูแล</h1>
+      <p class="text-xs text-gray-500 font-medium mt-1 mb-7">NU Media Club • Admin Portal</p>
+
+      <div class="text-left mb-4">
+        <label class="block text-xs font-bold text-gray-700 mb-1.5">อีเมลผู้ดูแล</label>
+        <input id="adminEmail" type="email" placeholder="admin@nu.ac.th" class="input-field w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400" />
+      </div>
+      <div class="text-left mb-6">
+        <label class="block text-xs font-bold text-gray-700 mb-1.5">รหัสผ่าน</label>
+        <input id="adminPass" type="password" placeholder="••••••••" class="input-field w-full px-4 py-3 rounded-xl text-sm text-gray-900 placeholder-gray-400" />
+      </div>
+
+      <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-primary w-full py-3.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md border-none">
+        <span id="adminLoginBtnText">เข้าสู่ระบบ</span>
+        <div id="adminLoginSpinner" class="spinner hidden"></div>
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══ ADMIN DASHBOARD (Authenticated) ═══ -->
+  <main id="adminDashboard" class="hidden max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+    <!-- ═══ VIEW 1: BENTO MENU HUB ═══ -->
+    <section id="adminMenuHub" class="fade-up">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">เมนูผู้ดูแลระบบ</h2>
+          <p class="text-xs sm:text-sm text-gray-500 font-medium mt-1">เลือกรายการที่ต้องการดำเนินการในระบบ</p>
+        </div>
+        <div class="inline-flex items-center gap-2 bg-orange-50 border border-orange-200 px-3.5 py-1.5 rounded-full text-xs font-bold text-[#ea580c] self-start sm:self-auto">
+          <span class="w-2 h-2 rounded-full bg-[#f97316]"></span>
+          <span id="hubAdminRole">NU Media Admin</span>
+        </div>
+      </div>
+
+      <!-- Bento Grid (4 Cards) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+
+        <!-- Card 1: การยืมแบบเดิม Google Form -->
+        <a href="https://forms.gle/2cxGopfs4huoeoRE6" target="_blank" rel="noopener noreferrer" class="bg-white border border-gray-200 hover:border-orange-300 rounded-3xl p-6 sm:p-7 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between no-underline text-inherit">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-2xl bg-gray-100 group-hover:bg-orange-50 text-gray-700 group-hover:text-[#ea580c] flex items-center justify-center transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-600 group-hover:bg-orange-50 group-hover:text-[#ea580c] transition-colors">Google Forms</span>
+            </div>
+            <h3 class="text-lg sm:text-xl font-black text-gray-900 mt-5 group-hover:text-[#ea580c] transition-colors">การยืมแบบเดิม Google Form</h3>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed">เข้าสู่แบบฟอร์ม Google Forms ดั้งเดิมของชมรม สำหรับบันทึกประวัติการยืมอุปกรณ์ตามขั้นตอนเดิม</p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-gray-400 group-hover:text-[#ea580c] transition-colors">
+            <span>เปิดแบบฟอร์มภายนอก</span>
+            <svg class="w-4 h-4 transform group-hover:translate-x-1 group-hover:-translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+          </div>
+        </a>
+
+        <!-- Card 2: การยืมแบบใหม่ -->
+        <a href="borrow.html" class="bg-white border border-gray-200 hover:border-orange-300 rounded-3xl p-6 sm:p-7 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between no-underline text-inherit">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-2xl bg-gray-100 group-hover:bg-orange-50 text-gray-700 group-hover:text-[#ea580c] flex items-center justify-center transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+              </div>
+              <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-orange-50 text-[#ea580c] border border-orange-200">ระบบใหม่</span>
+            </div>
+            <h3 class="text-lg sm:text-xl font-black text-gray-900 mt-5 group-hover:text-[#ea580c] transition-colors">การยืมแบบใหม่</h3>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed">ทำรายการยืมอุปกรณ์ผ่านระบบออนไลน์ เลือกอุปกรณ์ในคลัง บันทึกสต็อก และนับวันคืนอัตโนมัติ</p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-gray-400 group-hover:text-[#ea580c] transition-colors">
+            <span>เข้าสู่หน้าระบบยืมอุปกรณ์</span>
+            <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        </a>
+
+        <!-- Card 3: การคืนอุปกรณ์ -->
+        <a href="return.html" class="bg-white border border-gray-200 hover:border-orange-300 rounded-3xl p-6 sm:p-7 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between no-underline text-inherit">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-2xl bg-gray-100 group-hover:bg-orange-50 text-gray-700 group-hover:text-[#ea580c] flex items-center justify-center transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+              </div>
+              <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-600 group-hover:bg-orange-50 group-hover:text-[#ea580c] transition-colors">รับคืนอุปกรณ์</span>
+            </div>
+            <h3 class="text-lg sm:text-xl font-black text-gray-900 mt-5 group-hover:text-[#ea580c] transition-colors">การคืนอุปกรณ์</h3>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed">ตรวจสอบรายการอุปกรณ์ที่กำลังยืม รับคืนอุปกรณ์ และอัปโหลดภาพตรวจเช็คสภาพความสมบูรณ์</p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-gray-400 group-hover:text-[#ea580c] transition-colors">
+            <span>เข้าสู่หน้าระบบคืนอุปกรณ์</span>
+            <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        </a>
+
+        <!-- Card 4: หน้าตั้งค่าอุปกรณ์ (เป็นหน้าเพิ่มอุปกรณ์) -->
+        <div onclick="showAdminView('equipment')" class="bg-white border-2 border-orange-200/90 hover:border-[#f97316] rounded-3xl p-6 sm:p-7 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-2xl bg-orange-100 text-[#ea580c] group-hover:scale-105 flex items-center justify-center transition-transform">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-[#f97316] text-white">จัดการคลัง & เพิ่มอุปกรณ์</span>
+            </div>
+            <h3 class="text-lg sm:text-xl font-black text-gray-900 mt-5 group-hover:text-[#ea580c] transition-colors">ตั้งค่าอุปกรณ์ (หน้าเพิ่มอุปกรณ์)</h3>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1.5 leading-relaxed">จัดการคลังอุปกรณ์ เพิ่มรายการใหม่ กำหนดหมวดหมู่ รันรหัสอัตโนมัติ และตรวจสอบสถานะผู้ยืม</p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+            <span class="text-xs font-bold text-[#ea580c] flex items-center gap-1">
+              เปิดหน้าตั้งค่าอุปกรณ์
+              <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </span>
+            <button onclick="event.stopPropagation(); showAdminView('equipment'); openAddModal();" class="text-xs font-bold bg-[#f97316] hover:bg-[#ea580c] text-white px-3 py-1.5 rounded-xl transition-all shadow-xs border-none cursor-pointer flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              เพิ่มอุปกรณ์
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ═══ VIEW 2: EQUIPMENT MANAGEMENT PANEL ═══ -->
+    <section id="panelEquipment" class="hidden fade-up">
+      <!-- Back button & Panel Header -->
+      <div class="flex items-center justify-between mb-4">
+        <button onclick="showAdminView('hub')" class="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-gray-600 hover:text-[#ea580c] transition-colors cursor-pointer bg-white px-3.5 py-2 rounded-xl border border-gray-200 shadow-xs">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+          <span>กลับสู่เมนูหลัก</span>
+        </button>
+        <button onclick="openAddModal()" class="btn-primary px-4 py-2 rounded-xl text-white font-bold text-sm flex items-center gap-2 cursor-pointer shadow-sm border-none">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          เพิ่มอุปกรณ์
+        </button>
+      </div>
+
+      <div class="mb-4">
+        <h2 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">จัดการคลังอุปกรณ์</h2>
+        <p class="text-xs text-gray-500 mt-0.5">ขอบสีระบุสถานะ: เขียว=กำลังยืม, ส้ม=ถึงกำหนด, แดง=เลยกำหนด</p>
+      </div>
+
+      <!-- Filter Toolbar -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+        <div class="relative flex-1">
+          <input id="adminSearchInput" type="text" placeholder="ค้นหาชื่อ หรือ รหัสอุปกรณ์..." oninput="applyAdminFilters()" class="input-field w-full pl-9 pr-3 py-2 text-xs rounded-xl" />
+          <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="filterCategory" onchange="applyAdminFilters()" class="input-field text-xs font-bold py-2 px-3 rounded-xl bg-white cursor-pointer flex-1 md:flex-initial">
+            <option value="ALL">ทุกประเภท</option>
+            <option value="ไมค์">ไมค์ (MIC)</option>
+            <option value="ขาตั้ง">ขาตั้ง (POD)</option>
+            <option value="ไฟ">ไฟ (LAM)</option>
+            <option value="เลนส์">เลนส์ (LEN)</option>
+            <option value="กริมบอล">กริมบอล (GIM)</option>
+            <option value="กล้อง">กล้อง (CAM)</option>
+            <option value="อื่นๆ">อื่นๆ (NUM)</option>
+          </select>
+          <select id="filterStatus" onchange="applyAdminFilters()" class="input-field text-xs font-bold py-2 px-3 rounded-xl bg-white cursor-pointer flex-1 md:flex-initial">
+            <option value="ALL">ทุกสถานะ</option>
+            <option value="AVAILABLE">ไม่มีการยืม (ว่าง)</option>
+            <option value="BORROWED">กำลังยืม</option>
+            <option value="DUE_TODAY">ถึงกำหนดคืน</option>
+            <option value="OVERDUE">เลยกำหนดคืน</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="eqLoadingAdmin" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div class="skeleton h-44"></div><div class="skeleton h-44"></div><div class="skeleton h-44"></div><div class="skeleton h-44"></div>
+      </div>
+      <div id="eqGridAdmin" class="hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+      <div id="eqEmptyAdmin" class="hidden py-12 text-center text-sm text-gray-400">ยังไม่มีอุปกรณ์ในคลัง</div>
+    </section>
+
+  </main>
+
+  <!-- ═══ MODAL: ADD EQUIPMENT ═══ -->
+  <div id="addModal" class="hidden modal-overlay" onclick="if(event.target===this)closeAddModal()">
+    <div class="modal-content p-6 sm:p-8 fade-up">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-gray-900">เพิ่มอุปกรณ์ใหม่</h3>
+        <button onclick="closeAddModal()" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer border-none">
+          <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <!-- หมวดหมู่ -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">หมวดหมู่อุปกรณ์ <span class="text-red-500">*</span></label>
+          <select id="addItemCategory" onchange="onCategoryChange()" class="input-field w-full px-4 py-3 rounded-xl text-sm font-bold text-gray-800 bg-white cursor-pointer">
+            <option value="ไมค์">ไมค์ (MIC)</option>
+            <option value="ขาตั้ง">ขาตั้ง (POD)</option>
+            <option value="ไฟ">ไฟ (LAM)</option>
+            <option value="เลนส์">เลนส์ (LEN)</option>
+            <option value="กริมบอล">กริมบอล (GIM)</option>
+            <option value="กล้อง">กล้อง (CAM)</option>
+            <option value="อื่นๆ" selected>อื่นๆ (NUM)</option>
+          </select>
+        </div>
+
+        <!-- รหัสอุปกรณ์ -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1 flex items-center justify-between">
+            <span>รหัสอุปกรณ์</span>
+            <span class="text-[11px] font-bold text-[#ea580c] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">รันเลขอัตโนมัติ</span>
+          </label>
+          <input id="addItemId" type="text" placeholder="NUM-001" readonly class="input-field w-full px-4 py-3 rounded-xl text-sm font-bold text-[#ea580c] bg-orange-50/60 cursor-not-allowed" />
+          <p class="text-[11px] text-gray-400 mt-1" id="addItemIdHint">ระบบจะรันรหัสตามหมวดหมู่ต่อจากอุปกรณ์ล่าสุดโดยอัตโนมัติ</p>
+        </div>
+
+        <!-- ชื่ออุปกรณ์ -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">ชื่ออุปกรณ์ <span class="text-red-500">*</span></label>
+          <input id="addItemName" type="text" placeholder="เช่น Sony A7 IV" class="input-field w-full px-4 py-3 rounded-xl text-sm" />
+          <p class="text-[11px] text-gray-400 mt-1">สามารถพิมพ์เอง หรือลาก/เลือกรูปภาพเพื่อดึงชื่อไฟล์มาใส่ให้อัตโนมัติ</p>
+        </div>
+
+        <!-- อัปโหลดรูปภาพ (Drag & Drop + Click) -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">รูปภาพอุปกรณ์</label>
+          <div id="addDropZone" class="border-2 border-dashed border-gray-300 hover:border-[#f97316] bg-gray-50 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group">
+            <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-[#ea580c] group-hover:scale-110 transition-transform">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-gray-700">ลากรูปภาพมาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
+              <p class="text-xs text-gray-400 mt-0.5">ระบบจะดึงชื่อไฟล์มาใส่เป็นชื่ออุปกรณ์ให้อัตโนมัติ</p>
+            </div>
+          </div>
+          <input id="addImageInput" type="file" accept="image/*" class="hidden" onchange="previewAddImage(this)" />
+          
+          <div id="addPreviewWrap" class="hidden mt-3 text-center">
+            <img id="addPreviewImg" class="max-h-36 mx-auto rounded-xl object-contain shadow-sm border border-gray-200" />
+            <div class="flex items-center justify-center gap-3 mt-2">
+              <button type="button" onclick="document.getElementById('addImageInput').click()" class="text-xs font-bold text-[#ea580c] hover:underline cursor-pointer border-none bg-transparent">เปลี่ยนรูป</button>
+              <span class="text-gray-300">|</span>
+              <button type="button" onclick="clearAddImage()" class="text-xs font-bold text-red-500 hover:underline cursor-pointer border-none bg-transparent">ลบรูป</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="addSubmitBtn" onclick="handleAddEquipment()" class="btn-primary w-full py-3.5 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer shadow-md border-none mt-6">
+          <span id="addSubmitText">บันทึกอุปกรณ์</span>
+          <div id="addSubmitSpinner" class="spinner hidden"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MODAL: EQUIPMENT DETAIL ═══ -->
+  <div id="eqDetailModal" class="hidden modal-overlay" onclick="if(event.target===this)closeEqDetailModal()">
+    <div class="modal-content p-6 sm:p-8 fade-up" id="eqDetailBody"></div>
+  </div>
+
+<script>
+  var adminUser = null;
+  var adminCatalog = [];
+  var addBase64 = '', addMime = '';
+
+  var CATEGORY_PREFIX_MAP = {
+    'ไมค์': 'MIC',
+    'ขาตั้ง': 'POD',
+    'ไฟ': 'LAM',
+    'เลนส์': 'LEN',
+    'กริมบอล': 'GIM',
+    'กล้อง': 'CAM',
+    'อื่นๆ': 'NUM'
+  };
+
+  function navigateTo(page) {
+    window.location.href = (page === 'dashboard' ? 'index.html' : page + '.html');
+  }
+
+  /* ═══ ADMIN LOGIN & SESSION PERSISTENCE ═══ */
+  async function handleAdminLogin() {
+    var email = document.getElementById('adminEmail').value.trim();
+    var pass  = document.getElementById('adminPass').value.trim();
+    if (!email || !pass) { Swal.fire({ icon:'warning', title:'กรุณากรอกข้อมูลให้ครบ' }); return; }
+    setAdminLoginLoading(true);
+
+    try {
+      var res = await apiPost('adminLogin', { email: email, password: pass });
+      setAdminLoginLoading(false);
+      if (res && res.success) {
+        adminUser = res.admin;
+        // Save session in localStorage
+        try {
+          localStorage.setItem('nu_admin_user', JSON.stringify(res.admin));
+        } catch (e) {}
+        showAdminDashboard();
+      } else {
+        Swal.fire({ icon:'error', title:'เข้าสู่ระบบไม่สำเร็จ', text: (res && res.message) || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+      }
+    } catch (err) {
+      setAdminLoginLoading(false);
+      Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: err.message });
+    }
+  }
+
+  function setAdminLoginLoading(loading) {
+    document.getElementById('adminLoginBtn').disabled = loading;
+    document.getElementById('adminLoginBtnText').textContent = loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ';
+    document.getElementById('adminLoginSpinner').classList.toggle('hidden', !loading);
+  }
+
+  /* ═══ VIEW SWITCHING (BENTO HUB vs EQUIPMENT PANEL) ═══ */
+  function showAdminView(view) {
+    var hub = document.getElementById('adminMenuHub');
+    var equip = document.getElementById('panelEquipment');
+    if (view === 'equipment') {
+      if (hub) hub.classList.add('hidden');
+      if (equip) equip.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // Default to Hub
+      if (hub) hub.classList.remove('hidden');
+      if (equip) equip.classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  function adminLogout() {
+    adminUser = null;
+    try {
+      localStorage.removeItem('nu_admin_user');
+    } catch (e) {}
+    document.getElementById('adminDashboard').classList.add('hidden');
+    document.getElementById('adminHeader').classList.add('hidden');
+    document.getElementById('adminLoginSection').classList.remove('hidden');
+    document.getElementById('adminEmail').value = '';
+    document.getElementById('adminPass').value = '';
+  }
+
+  function initAdminSession() {
+    try {
+      var saved = localStorage.getItem('nu_admin_user');
+      if (saved) {
+        var parsed = JSON.parse(saved);
+        if (parsed && (parsed.email || parsed.name)) {
+          adminUser = parsed;
+          showAdminDashboard();
+          return;
+        }
+      }
+    } catch (e) {
+      localStorage.removeItem('nu_admin_user');
+    }
+    // Unauthenticated: Show full-screen login, hide header & dashboard
+    document.getElementById('adminHeader').classList.add('hidden');
+    document.getElementById('adminDashboard').classList.add('hidden');
+    document.getElementById('adminLoginSection').classList.remove('hidden');
+  }
+
+  function showAdminDashboard() {
+    document.getElementById('adminLoginSection').classList.add('hidden');
+    document.getElementById('adminHeader').classList.remove('hidden');
+    document.getElementById('adminDashboard').classList.remove('hidden');
+
+    var name = adminUser.name || adminUser.email;
+    var nameEl = document.getElementById('adminDisplayName');
+    if (nameEl) nameEl.textContent = name;
+
+    var roleEl = document.getElementById('hubAdminRole');
+    if (roleEl) roleEl.textContent = name + ' (' + (adminUser.role || 'Admin') + ')';
+
+    showAdminView('hub');
+    loadAdminEquipment();
+  }
+
+  /* ═══ LOAD EQUIPMENT & FILTERS ═══ */
+  async function loadAdminEquipment() {
+    document.getElementById('eqLoadingAdmin').classList.remove('hidden');
+    document.getElementById('eqGridAdmin').classList.add('hidden');
+    document.getElementById('eqEmptyAdmin').classList.add('hidden');
+
+    try {
+      var res = await apiGet('adminGetDashboard', { adminEmail: adminUser.email });
+      if (res && res.success) {
+        adminCatalog = res.catalog || res.data || [];
+        applyAdminFilters();
+      } else {
+        throw new Error((res && res.message) || 'โหลดข้อมูลไม่สำเร็จ');
+      }
+    } catch (err) {
+      document.getElementById('eqLoadingAdmin').classList.add('hidden');
+      Swal.fire({ icon:'error', title:'โหลดข้อมูลไม่สำเร็จ', text: err.message });
+    }
+  }
+
+  function applyAdminFilters() {
+    var q = (document.getElementById('adminSearchInput') ? document.getElementById('adminSearchInput').value : '').toLowerCase().trim();
+    var cat = document.getElementById('filterCategory') ? document.getElementById('filterCategory').value : 'ALL';
+    var st = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : 'ALL';
+
+    var filtered = adminCatalog.filter(function(item) {
+      // 1. Search Query
+      if (q) {
+        var matchQ = (item.name || '').toLowerCase().indexOf(q) !== -1 ||
+                     (item.id || '').toLowerCase().indexOf(q) !== -1;
+        if (!matchQ) return false;
+      }
+      // 2. Category Filter
+      if (cat !== 'ALL') {
+        var itemCat = (item.category || '').trim();
+        // check either category field or id prefix
+        var pfx = CATEGORY_PREFIX_MAP[cat] || '';
+        var matchCat = (itemCat === cat) || (pfx && (item.id || '').toUpperCase().startsWith(pfx));
+        if (!matchCat) return false;
+      }
+      // 3. Status Filter
+      if (st === 'AVAILABLE') {
+        if (item.borrower) return false;
+      } else if (st === 'BORROWED') {
+        if (!item.borrower) return false;
+      } else if (st === 'DUE_TODAY') {
+        if (!item.borrower || item.borrower.status !== 'ถึงกำหนดคืน') return false;
+      } else if (st === 'OVERDUE') {
+        if (!item.borrower || item.borrower.status !== 'เลยกำหนดคืน') return false;
+      }
+      return true;
+    });
+
+    renderAdminEquipment(filtered);
+  }
+
+  function renderAdminEquipment(items) {
+    document.getElementById('eqLoadingAdmin').classList.add('hidden');
+    var grid = document.getElementById('eqGridAdmin');
+
+    if (!items || items.length === 0) {
+      grid.classList.add('hidden');
+      document.getElementById('eqEmptyAdmin').classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('eqEmptyAdmin').classList.add('hidden');
+    grid.classList.remove('hidden');
+
+    grid.innerHTML = items.map(function(item) {
+      var realIdx = adminCatalog.indexOf(item);
+      var borderClass = '';
+      if (item.borrower) {
+        var st = item.borrower.status;
+        if (st === 'เลยกำหนดคืน') borderClass = 'border-red';
+        else if (st === 'ถึงกำหนดคืน') borderClass = 'border-yellow';
+        else borderClass = 'border-green';
+      }
+
+      var imgHtml = item.imageUrl
+        ? '<img src="' + escHtml(item.imageUrl) + '" alt="' + escHtml(item.name) + '" class="w-full h-28 object-cover" onerror="this.style.display=\'none\'" />'
+        : '<div class="w-full h-28 bg-gray-100 flex items-center justify-center"><svg class="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+
+      return '<div class="eq-card-admin fade-up ' + borderClass + '" onclick="showEqDetail(' + realIdx + ')">' +
+        imgHtml +
+        '<div class="p-3">' +
+          '<p class="text-xs font-bold text-gray-800 truncate" title="' + escHtml(item.name) + '">' + escHtml(item.name) + '</p>' +
+          '<div class="flex items-center gap-1.5 mt-0.5">' +
+            '<p class="text-[10px] text-gray-400 font-semibold">' + escHtml(item.id) + '</p>' +
+            (item.category ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-orange-50 text-[#ea580c] font-bold border border-orange-200">' + escHtml(item.category) + '</span>' : '') +
+          '</div>' +
+          (item.borrower
+            ? '<p class="text-[10px] font-semibold mt-1 ' + (item.borrower.status === 'เลยกำหนดคืน' ? 'text-red-500' : item.borrower.status === 'ถึงกำหนดคืน' ? 'text-amber-600' : 'text-emerald-600') + '">' + escHtml(item.borrower.nickname) + ' ยืมอยู่</p>'
+            : '<p class="text-[10px] text-gray-400 mt-1">ว่าง</p>'
+          ) +
+          '<button type="button" onclick="event.stopPropagation(); showEqDetail(' + realIdx + ')" class="w-full mt-2 py-1.5 px-2 bg-orange-50 hover:bg-orange-100 text-[#ea580c] text-[11px] font-bold rounded-lg transition-colors border border-orange-200 flex items-center justify-center gap-1 cursor-pointer">' +
+            '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+            'ดูข้อมูลเต็ม' +
+          '</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  /* ═══ EQUIPMENT DETAIL MODAL ═══ */
+  function showEqDetail(idx) {
+    var item = adminCatalog[idx];
+    if (!item) return;
+
+    var html = '';
+    html += '<div class="flex items-center justify-between mb-5">';
+    html += '<h3 class="text-xl font-bold text-gray-900">' + escHtml(item.name) + '</h3>';
+    html += '<button onclick="closeEqDetailModal()" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer border-none">';
+    html += '<svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div>';
+
+    if (item.imageUrl) {
+      html += '<img src="' + escHtml(item.imageUrl) + '" alt="' + escHtml(item.name) + '" class="w-full max-h-64 object-contain bg-gray-50 rounded-2xl border border-gray-200 mb-4" onerror="this.style.display=\'none\'" />';
+    }
+
+    html += '<div class="space-y-2 mb-5">';
+    html += '<p class="text-sm"><span class="font-bold text-gray-500">รหัสอุปกรณ์:</span> <span class="font-semibold text-gray-900">' + escHtml(item.id) + '</span></p>';
+    if (item.category) {
+      html += '<p class="text-sm"><span class="font-bold text-gray-500">หมวดหมู่:</span> <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-bold bg-orange-50 text-[#ea580c] border border-orange-200">' + escHtml(item.category) + '</span></p>';
+    }
+    html += '<p class="text-sm"><span class="font-bold text-gray-500">สถานะ:</span> <span class="font-semibold ' + (item.borrower ? 'text-amber-600' : 'text-emerald-600') + '">' + (item.borrower ? 'กำลังถูกยืม' : 'พร้อมใช้งาน') + '</span></p>';
+    html += '<p class="text-sm"><span class="font-bold text-gray-500">เพิ่มเมื่อ:</span> <span class="font-semibold text-gray-900">' + escHtml(item.dateAdded) + '</span></p>';
+    html += '</div>';
+
+    if (item.borrower) {
+      var b = item.borrower;
+      var stColor = b.status === 'เลยกำหนดคืน' ? 'border-red-300 bg-red-50' : b.status === 'ถึงกำหนดคืน' ? 'border-amber-300 bg-amber-50' : 'border-emerald-300 bg-emerald-50';
+      html += '<div class="border rounded-2xl p-4 ' + stColor + '">';
+      html += '<p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ผู้ยืมปัจจุบัน</p>';
+      html += '<p class="text-sm font-bold text-gray-900">' + escHtml(b.nickname) + '</p>';
+      html += '<p class="text-xs text-gray-600 mt-1">รหัสนิสิต: ' + escHtml(b.studentId) + '</p>';
+      html += '<p class="text-xs text-gray-600">ยืม: ' + escHtml(b.borrowDate) + ' → คืน: ' + escHtml(b.dueDate) + '</p>';
+      html += '<p class="text-xs font-bold mt-1 ' + (b.status === 'เลยกำหนดคืน' ? 'text-red-600' : b.status === 'ถึงกำหนดคืน' ? 'text-amber-600' : 'text-emerald-600') + '">' + escHtml(b.status) + '</p>';
+      html += '</div>';
+    } else {
+      html += '<div class="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-center">';
+      html += '<p class="text-sm text-emerald-600 font-bold">✓ ไม่มีผู้ยืมในขณะนี้ (พร้อมใช้งาน)</p>';
+      html += '</div>';
+    }
+
+    document.getElementById('eqDetailBody').innerHTML = html;
+    document.getElementById('eqDetailModal').classList.remove('hidden');
+  }
+
+  function closeEqDetailModal() {
+    document.getElementById('eqDetailModal').classList.add('hidden');
+  }
+
+  /* ═══ ADD EQUIPMENT & CATEGORY LOGIC ═══ */
+  function calculateNextItemId(category) {
+    var prefix = CATEGORY_PREFIX_MAP[category] || 'NUM';
+    var maxNum = 0;
+    var re = new RegExp('^' + prefix + '[-_]?(\\d+)', 'i');
+    (adminCatalog || []).forEach(function(item) {
+      var idStr = (item.id || '').toString().trim();
+      if (!idStr) return;
+      var match = idStr.match(re);
+      if (match) {
+        var n = parseInt(match[1], 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    });
+    return prefix + '-' + String(maxNum + 1).padStart(3, '0');
+  }
+
+  function onCategoryChange() {
+    var cat = document.getElementById('addItemCategory').value;
+    var nextId = calculateNextItemId(cat);
+    document.getElementById('addItemId').value = nextId;
+    var prefix = CATEGORY_PREFIX_MAP[cat] || 'NUM';
+    var hint = document.getElementById('addItemIdHint');
+    if (hint) {
+      hint.textContent = 'ระบบจะรันรหัส ' + prefix + '-XXX ต่อจากอุปกรณ์ล่าสุดในหมวดนี้โดยอัตโนมัติ';
+    }
+  }
+
+  function openAddModal() {
+    document.getElementById('addItemCategory').value = 'ไมค์';
+    onCategoryChange();
+    document.getElementById('addItemName').value = '';
+    clearAddImage();
+    document.getElementById('addModal').classList.remove('hidden');
+  }
+
+  function closeAddModal() {
+    document.getElementById('addModal').classList.add('hidden');
+  }
+
+  /* ═══ DRAG & DROP AND IMAGE HANDLING ═══ */
+  function processAddImageFile(file) {
+    if (!file) return;
+    if (!file.type || !file.type.match(/^image\//i)) {
+      Swal.fire({ icon: 'warning', title: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น' });
+      return;
+    }
+
+    // Auto extract file name and put in Item Name
+    var baseName = file.name.replace(/\.[^/.]+$/, '').trim();
+    if (baseName) {
+      var cleanName = baseName.replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+      var nameInput = document.getElementById('addItemName');
+      if (nameInput) {
+        nameInput.value = cleanName;
+      }
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var MAX = 1200, w = img.width, h = img.height;
+        if (w > MAX) { h = h * (MAX / w); w = MAX; }
+        if (h > MAX) { w = w * (MAX / h); h = MAX; }
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.round(w); canvas.height = Math.round(h);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        addBase64 = dataUrl.split(',')[1];
+        addMime = 'image/jpeg';
+        document.getElementById('addPreviewImg').src = dataUrl;
+        document.getElementById('addPreviewWrap').classList.remove('hidden');
+        document.getElementById('addDropZone').classList.add('hidden');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function previewAddImage(input) {
+    if (input.files && input.files[0]) {
+      processAddImageFile(input.files[0]);
+    }
+  }
+
+  function clearAddImage() {
+    addBase64 = ''; addMime = '';
+    document.getElementById('addImageInput').value = '';
+    document.getElementById('addPreviewWrap').classList.add('hidden');
+    document.getElementById('addDropZone').classList.remove('hidden');
+  }
+
+  function setupDropZone() {
+    var dropZone = document.getElementById('addDropZone');
+    if (!dropZone) return;
+
+    ['dragenter', 'dragover'].forEach(function(evt) {
+      dropZone.addEventListener(evt, function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('dropzone-active');
+      }, false);
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach(function(evt) {
+      dropZone.addEventListener(evt, function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('dropzone-active');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+      var dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        processAddImageFile(dt.files[0]);
+      }
+    }, false);
+
+    dropZone.addEventListener('click', function() {
+      document.getElementById('addImageInput').click();
+    });
+  }
+
+  async function handleAddEquipment() {
+    var name = document.getElementById('addItemName').value.trim();
+    if (!name) { Swal.fire({ icon:'warning', title:'กรุณาระบุชื่ออุปกรณ์' }); return; }
+
+    var category = document.getElementById('addItemCategory').value;
+    var itemId = document.getElementById('addItemId').value.trim();
+
+    setAddLoading(true);
+
+    try {
+      var res = await apiPost('adminAddEquipment', {
+        name: name,
+        category: category,
+        itemId: itemId,
+        imageBase64: addBase64,
+        imageMime: addMime,
+        adminEmail: adminUser.email
+      });
+      setAddLoading(false);
+      if (res && res.success) {
+        closeAddModal();
+        Swal.fire({ icon:'success', title:'สำเร็จ!', text: res.message, confirmButtonColor: '#f97316' });
+        loadAdminEquipment();
+      } else {
+        Swal.fire({ icon:'error', title:'ไม่สำเร็จ', text: (res && res.message) || 'เพิ่มอุปกรณ์ไม่สำเร็จ' });
+      }
+    } catch (err) {
+      setAddLoading(false);
+      Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: err.message });
+    }
+  }
+
+  function setAddLoading(loading) {
+    document.getElementById('addSubmitBtn').disabled = loading;
+    document.getElementById('addSubmitText').textContent = loading ? 'กำลังบันทึก...' : 'บันทึกอุปกรณ์';
+    document.getElementById('addSubmitSpinner').classList.toggle('hidden', !loading);
+  }
+
+  /* ═══ UTILS ═══ */
+  function escHtml(str) {
+    if (!str) return '';
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    setupDropZone();
+    initAdminSession();
+  });
+
+  document.getElementById('adminPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') handleAdminLogin(); });
+  document.getElementById('adminEmail').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('adminPass').focus(); });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .hidden {
+    display: none !important;
+  }
+}
+
+.hidden {
+  display: none !important;
+}

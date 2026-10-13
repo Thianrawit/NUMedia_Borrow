@@ -10,3 +10,6 @@ ReviewIDE.txt
 resize_logo.ps1
 logo_base64.txt
 logo_small.png
+ 
+node_modules/
+package-lock.json

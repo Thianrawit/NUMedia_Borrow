@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NU Media Club - ยืมอุปกรณ์" />
+  <title>NU Media Club - ยืมอุปกรณ์</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="apple-touch-icon" href="icon.png" />
+
+  <!-- Local Compiled Tailwind CSS -->
+  <link rel="stylesheet" href="css/tailwind.css" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Config & API Helper (Cache Buster) -->
+  <script src="config.js?v=4"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', 'Noto Sans Thai', sans-serif; background: #f9fafb; min-height: 100vh; }
+
+    .input-field {
+      background: #ffffff; border: 1px solid #d1d5db;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .input-field:focus {
+      border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,.15); outline: none;
+    }
+    .btn-primary {
+      background: #f97316; transition: background .15s, transform .15s, box-shadow .15s;
+    }
+    .btn-primary:hover:not(:disabled) { background: #ea580c; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(249,115,22,.3); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .eq-card {
+      border: 2px solid #e5e7eb; border-radius: 1rem;
+      background: #ffffff; overflow: hidden;
+      cursor: pointer; transition: all .15s ease;
+      position: relative;
+    }
+    .eq-card:hover:not(.disabled) { border-color: #f97316; box-shadow: 0 4px 12px rgba(249,115,22,.12); }
+    .eq-card.selected { border-color: #f97316; background: #fff7ed; }
+    .eq-card.disabled {
+      opacity: .5; filter: grayscale(1); cursor: not-allowed;
+      border-color: #e5e7eb; background: #f3f4f6;
+    }
+
+    .spinner { border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; width:20px; height:20px; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    .fade-up { animation: fadeUp .35s ease-out forwards; }
+
+    .img-preview { max-height: 200px; object-fit: contain; border-radius: .75rem; }
+
+    @keyframes shimmer { 0%{ background-position: -200% 0; } 100%{ background-position: 200% 0; } }
+    .skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 1rem;
+    }
+
+    .hidden { display: none !important; }
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; padding: 0;
+    }
+    .modal-overlay.hidden { display: none !important; }
+    @media (min-width: 640px) { .modal-overlay { align-items: center; padding: 1rem; } }
+    .modal-content {
+      background: #fff; width: 100%; max-width: 32rem;
+      border-radius: 1.5rem 1.5rem 0 0; max-height: 90vh; overflow-y: auto;
+      animation: fadeUp .3s ease-out;
+    }
+    @media (min-width: 640px) { .modal-content { border-radius: 1.5rem; } }
+
+    .dropzone-active {
+      border-color: #f97316 !important;
+      background-color: #fff7ed !important;
+      transform: scale(1.01);
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+
+<body class="text-gray-800 antialiased">
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="sticky top-0 z-50 bg-[#f97316] text-white shadow-md">
+    <div class="max-w-2xl mx-auto px-4 py-3.5 flex items-center gap-3">
+      <a href="index.html" class="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all cursor-pointer text-white no-underline shrink-0" title="กลับหน้าหลัก">
+        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </a>
+      <div>
+        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">ยืมอุปกรณ์</h1>
+        <p class="text-xs sm:text-sm text-orange-100 font-medium -mt-0.5">NU Media Club</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 py-6">
+
+    <!-- ═══ STEP 1: AGREEMENT ═══ -->
+    <section id="stepAgreement" class="fade-up">
+      <div class="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center">
+          <svg class="w-7 h-7 text-[#f97316]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <h2 class="text-center text-xl font-extrabold text-gray-900 mb-2">ข้อตกลงและเงื่อนไขการยืมอุปกรณ์</h2>
+        <p class="text-center text-xs text-gray-400 mb-6">ชมรม NU Media Club มหาวิทยาลัยนเรศวร</p>
+
+        <div class="bg-gray-50 rounded-2xl p-4 sm:p-5 text-sm text-gray-600 space-y-3 mb-6 max-h-60 overflow-y-auto leading-relaxed border border-gray-100">
+          <p class="font-bold text-gray-800">1. ผู้ยืมต้องเป็นสมาชิกชมรม NU Media Club เท่านั้น</p>
+          <p>2. ผู้ยืมต้องดูแลรักษาอุปกรณ์ให้อยู่ในสภาพสมบูรณ์ พร้อมใช้งานตลอดระยะเวลาที่ยืม</p>
+          <p>3. หากอุปกรณ์ชำรุด สูญหาย หรือเกิดความเสียหายใดๆ ผู้ยืมต้องรับผิดชอบค่าเสียหายตามจริง</p>
+          <p>4. ต้องส่งคืนอุปกรณ์ตามกำหนดเวลาที่ระบุไว้ในฟอร์มนี้ หากต้องการขยายเวลาต้องแจ้งผู้ดูแลล่วงหน้า</p>
+          <p>5. ต้องถ่ายภาพรวมอุปกรณ์ทั้งหมดที่ยืม ณ ห้องชมรม เป็นหลักฐานก่อนนำอุปกรณ์ออกไป</p>
+        </div>
+
+        <label class="flex items-start gap-3 cursor-pointer select-none mb-6 p-3 rounded-xl hover:bg-orange-50/50 transition-colors">
+          <input type="checkbox" id="agreeCheck" class="w-5 h-5 mt-0.5 accent-[#f97316] cursor-pointer" onchange="saveBorrowDraft()" />
+          <span class="text-sm font-semibold text-gray-800 leading-snug">
+            ข้าพเจ้าได้อ่าน เข้าใจ และยอมรับข้อตกลงและเงื่อนไขการยืมอุปกรณ์ข้างต้นทุกประการ
+          </span>
+        </label>
+
+        <button onclick="goToForm()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer shadow-md">
+          <span>ดำเนินการต่อ</span>
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ═══ STEP 2: BORROW FORM ═══ -->
+    <section id="stepForm" class="hidden fade-up">
+      <div class="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+        <h2 class="text-xl font-extrabold text-gray-900 mb-1">ข้อมูลการยืมอุปกรณ์</h2>
+        <p class="text-xs text-gray-400 mb-6">กรอกข้อมูลให้ครบถ้วนทุกช่องที่มีเครื่องหมาย <span class="text-red-500">*</span></p>
+
+        <!-- Email -->
+        <div class="mb-4">
+          <label class="block text-sm font-bold text-gray-700 mb-2">อีเมล (Google Account) <span class="text-red-500">*</span></label>
+          <input id="fEmail" type="email" placeholder="example@nu.ac.th" oninput="saveBorrowDraft()" class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+        </div>
+
+        <!-- Full Name & Nickname -->
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-สกุล <span class="text-red-500">*</span></label>
+            <input id="fFullName" type="text" placeholder="สมชาย ใจดี" oninput="saveBorrowDraft()" class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อเล่น <span class="text-red-500">*</span></label>
+            <input id="fNickname" type="text" placeholder="ชาย" oninput="saveBorrowDraft()" class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+          </div>
+        </div>
+
+        <!-- Student ID -->
+        <div class="mb-4">
+          <label class="block text-sm font-bold text-gray-700 mb-2">รหัสนิสิต <span class="text-red-500">*</span></label>
+          <input id="fStudentId" type="text" placeholder="65xxxxxx" oninput="saveBorrowDraft()" class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+        </div>
+
+        <!-- Department -->
+        <div class="mb-4">
+          <label class="block text-sm font-bold text-gray-700 mb-2">ฝ่าย <span class="text-red-500">*</span></label>
+          <select id="fDept" onchange="saveBorrowDraft()" class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900">
+            <option value="">— เลือกฝ่าย —</option>
+            <option>ภาพนิ่ง</option>
+            <option>วิดีโอ</option>
+            <option>กราฟิก</option>
+            <option>คอนเทนต์</option>
+          </select>
+        </div>
+
+        <!-- Contact -->
+        <div class="mb-4">
+          <label class="block text-sm font-bold text-gray-700 mb-2">ช่องทางติดต่อ <span class="text-red-500">*</span></label>
+          <input id="fContact" type="text" placeholder="Facebook / Instagram / เบอร์โทร" oninput="saveBorrowDraft()" class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+        </div>
+
+        <!-- Borrow Date & Due Date -->
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">วันที่ยืม <span class="text-red-500">*</span></label>
+            <input id="fBorrowDate" type="date" onchange="saveBorrowDraft()" class="input-field w-full px-4 py-3 rounded-xl text-base text-gray-900" />
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-2">กำหนดคืน <span class="text-red-500">*</span></label>
+            <input id="fDueDate" type="date" onchange="saveBorrowDraft()" class="input-field w-full px-4 py-3 rounded-xl text-base text-gray-900" />
+          </div>
+        </div>
+
+        <!-- Told Whom -->
+        <div class="mb-4">
+          <label class="block text-sm font-bold text-gray-700 mb-2">ได้บอกกับใครไว้บ้าง</label>
+          <input id="fToldWhom" type="text" placeholder="เช่น พี่เอ, พี่บี" oninput="saveBorrowDraft()" class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+        </div>
+
+        <!-- Room Opener -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">ใครเป็นคนเปิดห้องชมรมให้</label>
+          <input id="fRoomOpener" type="text" placeholder="เช่น พี่ซี" oninput="saveBorrowDraft()" class="input-field w-full px-4 py-3.5 rounded-xl text-base text-gray-900 placeholder-gray-400" />
+        </div>
+
+        <!-- ═══ EQUIPMENT PICKER ═══ -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+          <h3 class="text-lg font-extrabold text-gray-900">📦 เลือกอุปกรณ์ที่จะยืม <span class="text-red-500">*</span></h3>
+          <span id="selectedCountBadge" class="hidden text-xs font-bold text-[#ea580c] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200 self-start sm:self-auto"></span>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">คลิกเพื่อเลือกอุปกรณ์ที่ต้องการ หรือกดปุ่มดูรายละเอียดเต็มเพื่อดูภาพขยาย</p>
+
+        <!-- Category Filter Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 no-scrollbar" id="categoryPillsWrap">
+          <button type="button" onclick="setBorrowCategory('ALL')" class="cat-pill px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer border bg-[#f97316] text-white border-[#f97316]" data-cat="ALL">ทั้งหมด</button>
+          <button type="button" onclick="setBorrowCategory('ไมค์')" class="cat-pill px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border bg-white text-gray-600 border-gray-200 hover:border-orange-300" data-cat="ไมค์">ไมค์</button>
+          <button type="button" onclick="setBorrowCategory('ขาตั้ง')" class="cat-pill px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border bg-white text-gray-600 border-gray-200 hover:border-orange-300" data-cat="ขาตั้ง">ขาตั้ง</button>
+          <button type="button" onclick="setBorrowCategory('ไฟ')" class="cat-pill px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border bg-white text-gray-600 border-gray-200 hover:border-orange-300" data-cat="ไฟ">ไฟ</button>
+          <button type="button" onclick="setBorrowCategory('เลนส์')" class="cat-pill px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border bg-white text-gray-600 border-gray-200 hover:border-orange-300" data-cat="เลนส์">เลนส์</button>
+          <button type="button" onclick="setBorrowCategory('กริมบอล')" class="cat-pill px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border bg-white text-gray-600 border-gray-200 hover:border-orange-300" data-cat="กริมบอล">กริมบอล</button>
+          <button type="button" onclick="setBorrowCategory('กล้อง')" class="cat-pill px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border bg-white text-gray-600 border-gray-200 hover:border-orange-300" data-cat="กล้อง">กล้อง</button>
+          <button type="button" onclick="setBorrowCategory('อื่นๆ')" class="cat-pill px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border bg-white text-gray-600 border-gray-200 hover:border-orange-300" data-cat="อื่นๆ">อื่นๆ</button>
+        </div>
+
+        <!-- Search & Show All Controls -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 mb-4">
+          <div class="relative flex-1">
+            <input type="text" id="eqSearchInput" placeholder="ค้นหาชื่ออุปกรณ์ เช่น Sony, ไมค์, ขาตั้ง..." class="input-field w-full pl-9 pr-3 py-2.5 rounded-xl text-xs" />
+            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer select-none bg-white border border-gray-200 px-3.5 py-2.5 rounded-xl hover:border-orange-300 transition-colors shrink-0">
+            <input type="checkbox" id="showAllCheck" class="w-4 h-4 accent-[#f97316] cursor-pointer" onchange="renderCatalog()" />
+            <span class="text-xs font-bold text-gray-700">แสดงทั้งหมด</span>
+          </label>
+        </div>
+
+        <div id="eqLoading" class="grid grid-cols-2 sm:grid-cols-2 gap-3 mb-4">
+          <div class="skeleton h-36"></div><div class="skeleton h-36"></div><div class="skeleton h-36"></div><div class="skeleton h-36"></div>
+        </div>
+        <div id="eqGrid" class="hidden grid grid-cols-2 sm:grid-cols-2 gap-3 mb-4"></div>
+        <div id="eqEmptySearch" class="hidden py-8 text-center text-sm text-gray-400 bg-gray-50 rounded-2xl border border-gray-100 mb-4">
+          ไม่พบอุปกรณ์ที่ตรงกับหมวดหมู่หรือคำค้นหา
+        </div>
+
+        <!-- Toggle more button if showAll is unchecked and total > 4 -->
+        <div id="moreEquipmentWrap" class="text-center mb-4 hidden">
+          <button type="button" onclick="document.getElementById('showAllCheck').checked=true; renderCatalog();" class="text-xs font-bold text-[#f97316] hover:text-[#ea580c] bg-orange-50 hover:bg-orange-100 border border-orange-200 px-4 py-2 rounded-xl transition-all cursor-pointer">
+            ดูอุปกรณ์ทั้งหมด (<span id="totalEqCount">0</span> ชิ้น) ↓
+          </button>
+        </div>
+
+        <!-- Other Equipment -->
+        <div class="mb-6">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="otherCheck" class="w-5 h-5 accent-[#f97316] shrink-0" onchange="toggleOther(); saveBorrowDraft();" />
+            <span class="text-sm font-bold text-gray-800">อื่นๆ (อุปกรณ์ที่ไม่อยู่ในรายการ)</span>
+          </label>
+
+          <div id="otherSection" class="hidden mt-3 pl-8 space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-gray-600 mb-1">ระบุชื่อหรือรายละเอียดอุปกรณ์</label>
+              <input id="fOtherDetail" type="text" placeholder="เช่น สาย HDMI, ปลั๊กพ่วง 5 เมตร" oninput="saveBorrowDraft()" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-600 mb-1">ถ่ายรูปอุปกรณ์เสริม (ลากรูปมาวางหรือแตะเพื่อเลือก)</label>
+              <div id="otherDropZone" class="border-2 border-dashed border-gray-300 hover:border-[#f97316] bg-white rounded-xl p-4 text-center cursor-pointer transition-colors" onclick="document.getElementById('otherImageInput').click()">
+                <p class="text-xs text-gray-500 font-semibold">ลากรูปมาวางที่นี่ หรือแตะเพื่อเลือกรูปภาพ</p>
+              </div>
+              <input id="otherImageInput" type="file" accept="image/*" class="hidden" onchange="previewOtherImage(this)" />
+              <div id="otherPreviewWrap" class="hidden mt-2 text-center">
+                <img id="otherPreviewImg" class="img-preview mx-auto shadow-sm border border-gray-200" />
+                <button type="button" onclick="clearOtherImage()" class="text-xs font-bold text-red-500 hover:text-red-700 mt-2 cursor-pointer border-none bg-transparent">ลบรูป</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ IMAGE UPLOAD (Group Photo) ═══ -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">
+            📷 ภาพถ่ายรวมอุปกรณ์ที่ยืมไปทั้งหมด ณ ห้องชมรม <span class="text-red-500">*</span>
+          </label>
+          <div id="groupDropZone" class="border-2 border-dashed border-gray-300 hover:border-[#f97316] bg-gray-50 hover:bg-orange-50/30 rounded-2xl p-6 text-center cursor-pointer transition-colors" onclick="document.getElementById('groupImageInput').click()">
+            <svg class="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <p class="text-sm font-bold text-gray-700">ลากรูปภาพมาวางที่นี่ หรือแตะเพื่อเลือกรูปภาพ</p>
+            <p class="text-xs text-gray-400 mt-1">นำอุปกรณ์ทั้งหมดมาวางรวมกันแล้วถ่ายรูป</p>
+          </div>
+          <input id="groupImageInput" type="file" accept="image/*" class="hidden" onchange="previewGroupImage(this)" />
+          <div id="groupPreviewWrap" class="hidden mt-3 text-center bg-gray-50 border border-gray-200 rounded-2xl p-4">
+            <img id="groupPreviewImg" class="img-preview mx-auto shadow-sm" />
+            <button type="button" onclick="clearGroupImage()" class="text-xs font-bold text-red-500 hover:text-red-700 mt-3 cursor-pointer border-none bg-transparent">ลบรูป / ถ่ายใหม่</button>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button id="submitBtn" onclick="handleSubmit()" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 cursor-pointer shadow-md border-none">
+          <span id="submitBtnText">ส่งฟอร์มยืมอุปกรณ์</span>
+          <div id="submitSpinner" class="spinner hidden"></div>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══ MODAL: EQUIPMENT DETAIL FULL VIEW ═══ -->
+  <div id="borrowItemDetailModal" class="hidden modal-overlay" onclick="if(event.target===this)closeBorrowItemDetail()">
+    <div class="modal-content p-6 sm:p-8 fade-up" id="borrowItemDetailBody"></div>
+  </div>
+
+<script>
+  var selectedEquipment = {};
+  var catalogItems = [];
+  var currentBorrowCategory = 'ALL';
+  var groupBase64 = '', groupMime = '';
+  var otherBase64 = '', otherMime = '';
+
+  var CATEGORY_PREFIX_MAP = {
+    'ไมค์': 'MIC',
+    'ขาตั้ง': 'POD',
+    'ไฟ': 'LAM',
+    'เลนส์': 'LEN',
+    'กริมบอล': 'GIM',
+    'กล้อง': 'CAM',
+    'อื่นๆ': 'NUM'
+  };
+
+  function navigateTo(page) {
+    window.location.href = (page === 'dashboard' ? 'index.html' : page + '.html');
+  }
+
+  /* ═══ STEP NAVIGATION ═══ */
+  function goToForm() {
+    if (!document.getElementById('agreeCheck').checked) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'กรุณายอมรับข้อตกลง',
+        text: 'คุณต้องยอมรับข้อตกลงและเงื่อนไขก่อนดำเนินการต่อ',
+        confirmButtonColor: '#f97316'
+      });
+      return;
+    }
+    document.getElementById('stepAgreement').classList.add('hidden');
+    document.getElementById('stepForm').classList.remove('hidden');
+    loadCatalog();
+    saveBorrowDraft();
+
+    // Set default borrow date to today if empty
+    var bDate = document.getElementById('fBorrowDate');
+    if (!bDate.value) {
+      var today = new Date();
+      bDate.value = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+    }
+  }
+
+  /* ═══ CATEGORY FILTER ═══ */
+  function setBorrowCategory(cat) {
+    currentBorrowCategory = cat;
+    var pills = document.querySelectorAll('.cat-pill');
+    pills.forEach(function(pill) {
+      var isAct = pill.getAttribute('data-cat') === cat;
+      if (isAct) {
+        pill.className = 'cat-pill px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer border bg-[#f97316] text-white border-[#f97316]';
+      } else {
+        pill.className = 'cat-pill px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border bg-white text-gray-600 border-gray-200 hover:border-orange-300';
+      }
+    });
+    renderCatalog();
+  }
+
+  /* ═══ LOAD CATALOG via apiGet ═══ */
+  async function loadCatalog() {
+    try {
+      var res = await apiGet('getBorrowCatalog');
+      if (res && res.success) {
+        catalogItems = res.catalog || res.data || [];
+        renderCatalog();
+      } else {
+        throw new Error((res && res.message) || 'โหลดคลังอุปกรณ์ไม่สำเร็จ');
+      }
+    } catch (err) {
+      document.getElementById('eqLoading').classList.add('hidden');
+      Swal.fire({ icon: 'error', title: 'โหลดคลังอุปกรณ์ไม่สำเร็จ', text: err.message });
+    }
+  }
+
+  function renderCatalog() {
+    document.getElementById('eqLoading').classList.add('hidden');
+    var grid = document.getElementById('eqGrid');
+    var emptySearch = document.getElementById('eqEmptySearch');
+    var moreWrap = document.getElementById('moreEquipmentWrap');
+    var countBadge = document.getElementById('selectedCountBadge');
+
+    // Update selected badge
+    var selectedCount = Object.keys(selectedEquipment).length;
+    if (selectedCount > 0) {
+      countBadge.textContent = 'เลือกแล้ว ' + selectedCount + ' ชิ้น';
+      countBadge.classList.remove('hidden');
+    } else {
+      countBadge.classList.add('hidden');
+    }
+
+    var q = (document.getElementById('eqSearchInput') ? document.getElementById('eqSearchInput').value : '').toLowerCase().trim();
+    var showAll = document.getElementById('showAllCheck') && document.getElementById('showAllCheck').checked;
+
+    // Filter by category & search query
+    var filtered = catalogItems.filter(function(item) {
+      // 1. Category
+      if (currentBorrowCategory !== 'ALL') {
+        var pfx = CATEGORY_PREFIX_MAP[currentBorrowCategory] || '';
+        var matchCat = ((item.category || '').trim() === currentBorrowCategory) ||
+                       (pfx && (item.id || '').toUpperCase().startsWith(pfx));
+        if (!matchCat) return false;
+      }
+      // 2. Search query
+      if (q) {
+        var matchQ = (item.name || '').toLowerCase().indexOf(q) !== -1 ||
+                     (item.id || '').toLowerCase().indexOf(q) !== -1 ||
+                     (item.category || '').toLowerCase().indexOf(q) !== -1;
+        if (!matchQ) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      grid.classList.add('hidden');
+      emptySearch.classList.remove('hidden');
+      if (moreWrap) moreWrap.classList.add('hidden');
+      return;
+    }
+
+    emptySearch.classList.add('hidden');
+    grid.classList.remove('hidden');
+
+    // Limit to 4 unless showAll is checked or searching
+    var displayItems = filtered;
+    if (!showAll && !q && filtered.length > 4) {
+      displayItems = filtered.slice(0, 4);
+      if (moreWrap) {
+        document.getElementById('totalEqCount').textContent = filtered.length;
+        moreWrap.classList.remove('hidden');
+      }
+    } else {
+      if (moreWrap) moreWrap.classList.add('hidden');
+    }
+
+    grid.innerHTML = displayItems.map(function(item) {
+      var realIdx = catalogItems.indexOf(item);
+      var disabled = item.isBorrowed;
+      var isSelected = !!selectedEquipment[item.name];
+
+      var imgHtml = item.imageUrl
+        ? '<img src="' + escHtml(item.imageUrl) + '" alt="' + escHtml(item.name) + '" class="w-full h-28 object-cover" onerror="this.style.display=\'none\'" />'
+        : '<div class="w-full h-28 bg-gray-100 flex items-center justify-center"><svg class="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+
+      return '<div class="eq-card' + (disabled ? ' disabled' : '') + (isSelected ? ' selected' : '') + '" id="eq_' + realIdx + '" onclick="' + (disabled ? '' : 'toggleEquipment(' + realIdx + ')') + '">' +
+        // Full view button on card corner
+        '<button type="button" onclick="event.stopPropagation(); showBorrowItemDetail(' + realIdx + ')" title="ดูรายละเอียดเต็ม" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-all z-10 cursor-pointer border-none shadow">' +
+          '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+        '</button>' +
+        imgHtml +
+        '<div class="p-2.5">' +
+          '<div class="flex items-center gap-1.5">' +
+            '<div class="w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center ' +
+              (disabled ? 'border-gray-300 bg-gray-200' : (isSelected ? 'bg-[#f97316] border-[#f97316]' : 'border-gray-300')) +
+              '" id="eqCheck_' + realIdx + '">' +
+              (isSelected ? '<svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : '') +
+            '</div>' +
+            '<p class="text-xs font-bold text-gray-800 truncate">' + escHtml(item.name) + '</p>' +
+          '</div>' +
+          '<div class="flex items-center justify-between mt-1">' +
+            '<span class="text-[10px] text-gray-400 font-medium">' + escHtml(item.id || '') + '</span>' +
+            (item.category ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-orange-50 text-[#ea580c] font-bold border border-orange-200">' + escHtml(item.category) + '</span>' : '') +
+          '</div>' +
+          (disabled ? '<p class="text-[10px] text-red-500 font-semibold mt-1">มีคนยืมอยู่</p>' : '') +
+        '</div></div>';
+    }).join('');
+  }
+
+  function toggleEquipment(idx) {
+    var item = catalogItems[idx];
+    if (!item || item.isBorrowed) return;
+    var key = item.name;
+
+    if (selectedEquipment[key]) {
+      delete selectedEquipment[key];
+    } else {
+      selectedEquipment[key] = true;
+    }
+    saveBorrowDraft();
+    renderCatalog();
+  }
+
+  /* ═══ FULL EQUIPMENT DETAIL MODAL ═══ */
+  function showBorrowItemDetail(idx) {
+    var item = catalogItems[idx];
+    if (!item) return;
+
+    var isSelected = !!selectedEquipment[item.name];
+    var disabled = !!item.isBorrowed;
+
+    var html = '';
+    html += '<div class="flex items-center justify-between mb-4">';
+    html += '<h3 class="text-xl font-bold text-gray-900">' + escHtml(item.name) + '</h3>';
+    html += '<button type="button" onclick="closeBorrowItemDetail()" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer border-none">';
+    html += '<svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div>';
+
+    if (item.imageUrl) {
+      html += '<img src="' + escHtml(item.imageUrl) + '" alt="' + escHtml(item.name) + '" class="w-full max-h-64 object-contain bg-gray-50 rounded-2xl border border-gray-200 mb-4" onerror="this.style.display=\'none\'" />';
+    }
+
+    html += '<div class="space-y-2 mb-6">';
+    html += '<p class="text-sm"><span class="font-bold text-gray-500">รหัสอุปกรณ์:</span> <span class="font-semibold text-gray-900">' + escHtml(item.id || '-') + '</span></p>';
+    if (item.category) {
+      html += '<p class="text-sm"><span class="font-bold text-gray-500">หมวดหมู่:</span> <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-bold bg-orange-50 text-[#ea580c] border border-orange-200">' + escHtml(item.category) + '</span></p>';
+    }
+    html += '<p class="text-sm"><span class="font-bold text-gray-500">สถานะ:</span> <span class="font-bold ' + (disabled ? 'text-red-500' : 'text-emerald-600') + '">' + (disabled ? 'มีคนยืมอยู่' : 'ว่าง (พร้อมใช้งาน)') + '</span></p>';
+    html += '</div>';
+
+    if (disabled) {
+      html += '<button disabled class="w-full py-3.5 rounded-xl bg-gray-200 text-gray-500 font-bold text-sm cursor-not-allowed border-none">อุปกรณ์นี้มีคนยืมอยู่ ไม่สามารถเลือกได้</button>';
+    } else {
+      if (isSelected) {
+        html += '<button type="button" onclick="toggleEquipment(' + idx + '); closeBorrowItemDetail();" class="w-full py-3.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm transition-colors cursor-pointer border border-red-200">✕ ยกเลิกการเลือกอุปกรณ์นี้</button>';
+      } else {
+        html += '<button type="button" onclick="toggleEquipment(' + idx + '); closeBorrowItemDetail();" class="btn-primary w-full py-3.5 rounded-xl text-white font-bold text-sm transition-colors cursor-pointer border-none shadow">✓ เลือกยืมอุปกรณ์นี้</button>';
+      }
+    }
+
+    document.getElementById('borrowItemDetailBody').innerHTML = html;
+    document.getElementById('borrowItemDetailModal').classList.remove('hidden');
+  }
+
+  function closeBorrowItemDetail() {
+    document.getElementById('borrowItemDetailModal').classList.add('hidden');
+  }
+
+  /* ═══ OTHER TOGGLE ═══ */
+  function toggleOther() {
+    var show = document.getElementById('otherCheck').checked;
+    document.getElementById('otherSection').classList.toggle('hidden', !show);
+    if (!show) clearOtherImage();
+  }
+
+  /* ═══ IMAGE COMPRESSION ═══ */
+  function compressImage(file, callback) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var MAX = 1200, w = img.width, h = img.height;
+        if (w > MAX) { h = h * (MAX / w); w = MAX; }
+        if (h > MAX) { w = w * (MAX / h); h = MAX; }
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.round(w); canvas.height = Math.round(h);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        callback(dataUrl.split(',')[1], 'image/jpeg', dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function previewGroupImage(input) {
+    if (!input.files || !input.files[0]) return;
+    handleGroupImageFile(input.files[0]);
+  }
+
+  function handleGroupImageFile(file) {
+    if (!file || !file.type.match(/^image\//i)) {
+      Swal.fire({ icon: 'warning', title: 'กรุณาเลือกไฟล์รูปภาพ' });
+      return;
+    }
+    compressImage(file, function(b64, mime, dataUrl) {
+      groupBase64 = b64; groupMime = mime;
+      document.getElementById('groupPreviewImg').src = dataUrl;
+      document.getElementById('groupPreviewWrap').classList.remove('hidden');
+      document.getElementById('groupDropZone').classList.add('hidden');
+    });
+  }
+
+  function clearGroupImage() {
+    groupBase64 = ''; groupMime = '';
+    document.getElementById('groupImageInput').value = '';
+    document.getElementById('groupPreviewWrap').classList.add('hidden');
+    document.getElementById('groupDropZone').classList.remove('hidden');
+  }
+
+  function previewOtherImage(input) {
+    if (!input.files || !input.files[0]) return;
+    handleOtherImageFile(input.files[0]);
+  }
+
+  function handleOtherImageFile(file) {
+    if (!file || !file.type.match(/^image\//i)) {
+      Swal.fire({ icon: 'warning', title: 'กรุณาเลือกไฟล์รูปภาพ' });
+      return;
+    }
+    compressImage(file, function(b64, mime, dataUrl) {
+      otherBase64 = b64; otherMime = mime;
+      document.getElementById('otherPreviewImg').src = dataUrl;
+      document.getElementById('otherPreviewWrap').classList.remove('hidden');
+      document.getElementById('otherDropZone').classList.add('hidden');
+    });
+  }
+
+  function clearOtherImage() {
+    otherBase64 = ''; otherMime = '';
+    document.getElementById('otherImageInput').value = '';
+    document.getElementById('otherPreviewWrap').classList.add('hidden');
+    document.getElementById('otherDropZone').classList.remove('hidden');
+  }
+
+  /* ═══ SETUP DRAG & DROP FOR BORROW PAGE ═══ */
+  function setupBorrowDropZones() {
+    // Group dropzone
+    var groupZone = document.getElementById('groupDropZone');
+    if (groupZone) {
+      ['dragenter', 'dragover'].forEach(function(ev) {
+        groupZone.addEventListener(ev, function(e) {
+          e.preventDefault(); e.stopPropagation();
+          groupZone.classList.add('dropzone-active');
+        });
+      });
+      ['dragleave', 'dragend', 'drop'].forEach(function(ev) {
+        groupZone.addEventListener(ev, function(e) {
+          e.preventDefault(); e.stopPropagation();
+          groupZone.classList.remove('dropzone-active');
+        });
+      });
+      groupZone.addEventListener('drop', function(e) {
+        var dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+          handleGroupImageFile(dt.files[0]);
+        }
+      });
+    }
+
+    // Other dropzone
+    var otherZone = document.getElementById('otherDropZone');
+    if (otherZone) {
+      ['dragenter', 'dragover'].forEach(function(ev) {
+        otherZone.addEventListener(ev, function(e) {
+          e.preventDefault(); e.stopPropagation();
+          otherZone.classList.add('dropzone-active');
+        });
+      });
+      ['dragleave', 'dragend', 'drop'].forEach(function(ev) {
+        otherZone.addEventListener(ev, function(e) {
+          e.preventDefault(); e.stopPropagation();
+          otherZone.classList.remove('dropzone-active');
+        });
+      });
+      otherZone.addEventListener('drop', function(e) {
+        var dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+          handleOtherImageFile(dt.files[0]);
+        }
+      });
+    }
+  }
+
+  /* ═══ DRAFT PERSISTENCE (LOCALSTORAGE) ═══ */
+  function saveBorrowDraft() {
+    try {
+      var draft = {
+        agreed: document.getElementById('agreeCheck') ? document.getElementById('agreeCheck').checked : false,
+        email: document.getElementById('fEmail') ? document.getElementById('fEmail').value : '',
+        fullName: document.getElementById('fFullName') ? document.getElementById('fFullName').value : '',
+        nickname: document.getElementById('fNickname') ? document.getElementById('fNickname').value : '',
+        studentId: document.getElementById('fStudentId') ? document.getElementById('fStudentId').value : '',
+        dept: document.getElementById('fDept') ? document.getElementById('fDept').value : '',
+        contact: document.getElementById('fContact') ? document.getElementById('fContact').value : '',
+        borrowDate: document.getElementById('fBorrowDate') ? document.getElementById('fBorrowDate').value : '',
+        dueDate: document.getElementById('fDueDate') ? document.getElementById('fDueDate').value : '',
+        toldWhom: document.getElementById('fToldWhom') ? document.getElementById('fToldWhom').value : '',
+        roomOpener: document.getElementById('fRoomOpener') ? document.getElementById('fRoomOpener').value : '',
+        otherChecked: document.getElementById('otherCheck') ? document.getElementById('otherCheck').checked : false,
+        otherDetail: document.getElementById('fOtherDetail') ? document.getElementById('fOtherDetail').value : '',
+        selectedEquipment: selectedEquipment
+      };
+      localStorage.setItem('nu_borrow_draft', JSON.stringify(draft));
+    } catch (e) {}
+  }
+
+  function restoreBorrowDraft() {
+    try {
+      var raw = localStorage.getItem('nu_borrow_draft');
+      if (!raw) return;
+      var draft = JSON.parse(raw);
+      if (!draft) return;
+
+      if (draft.agreed) {
+        document.getElementById('agreeCheck').checked = true;
+        document.getElementById('stepAgreement').classList.add('hidden');
+        document.getElementById('stepForm').classList.remove('hidden');
+        loadCatalog();
+      }
+
+      if (draft.email) document.getElementById('fEmail').value = draft.email;
+      if (draft.fullName) document.getElementById('fFullName').value = draft.fullName;
+      if (draft.nickname) document.getElementById('fNickname').value = draft.nickname;
+      if (draft.studentId) document.getElementById('fStudentId').value = draft.studentId;
+      if (draft.dept) document.getElementById('fDept').value = draft.dept;
+      if (draft.contact) document.getElementById('fContact').value = draft.contact;
+      if (draft.borrowDate) document.getElementById('fBorrowDate').value = draft.borrowDate;
+      if (draft.dueDate) document.getElementById('fDueDate').value = draft.dueDate;
+      if (draft.toldWhom) document.getElementById('fToldWhom').value = draft.toldWhom;
+      if (draft.roomOpener) document.getElementById('fRoomOpener').value = draft.roomOpener;
+
+      if (draft.otherChecked) {
+        document.getElementById('otherCheck').checked = true;
+        document.getElementById('otherSection').classList.remove('hidden');
+        if (draft.otherDetail) document.getElementById('fOtherDetail').value = draft.otherDetail;
+      }
+
+      if (draft.selectedEquipment && typeof draft.selectedEquipment === 'object') {
+        selectedEquipment = draft.selectedEquipment;
+      }
+    } catch (e) {}
+  }
+
+  /* ═══ SUBMIT ═══ */
+  async function handleSubmit() {
+    var email     = document.getElementById('fEmail').value.trim();
+    var fullName  = document.getElementById('fFullName').value.trim();
+    var nickname  = document.getElementById('fNickname').value.trim();
+    var studentId = document.getElementById('fStudentId').value.trim();
+    var dept      = document.getElementById('fDept').value;
+    var contact   = document.getElementById('fContact').value.trim();
+    var borrowDate = document.getElementById('fBorrowDate').value;
+    var dueDate   = document.getElementById('fDueDate').value;
+
+    // Validation
+    if (!email || !fullName || !nickname || !studentId || !dept || !contact || !borrowDate || !dueDate) {
+      Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูลให้ครบ', text: 'ทุกช่องที่มี * ต้องกรอก' });
+      return;
+    }
+
+    var selectedNames = Object.keys(selectedEquipment);
+    var otherDetail = '';
+    if (document.getElementById('otherCheck').checked) {
+      otherDetail = document.getElementById('fOtherDetail').value.trim();
+      if (otherDetail) selectedNames.push(otherDetail);
+    }
+
+    if (selectedNames.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'กรุณาเลือกอุปกรณ์', text: 'เลือกอุปกรณ์อย่างน้อย 1 ชิ้น' });
+      return;
+    }
+
+    if (!groupBase64) {
+      Swal.fire({ icon: 'warning', title: 'กรุณาถ่ายภาพรวมอุปกรณ์', text: 'ต้องแนบภาพอุปกรณ์รวมกันเป็นหลักฐาน' });
+      return;
+    }
+
+    setSubmitLoading(true);
+
+    var payload = {
+      email: email,
+      fullName: fullName,
+      nickname: nickname,
+      studentId: studentId,
+      department: dept,
+      contact: contact,
+      borrowDate: borrowDate,
+      dueDate: dueDate,
+      toldWhom: document.getElementById('fToldWhom').value.trim(),
+      roomOpener: document.getElementById('fRoomOpener').value.trim(),
+      selectedItems: selectedNames.join(', '),
+      groupImageBase64: groupBase64,
+      groupImageMime: groupMime,
+      otherImageBase64: otherBase64,
+      otherImageMime: otherMime,
+      otherDetail: document.getElementById('otherCheck').checked ? document.getElementById('fOtherDetail').value.trim() : '',
+      agreement: 'ยอมรับข้อตกลง'
+    };
+
+    try {
+      var res = await apiPost('submitBorrowV2', payload);
+      setSubmitLoading(false);
+      if (res && res.success) {
+        try {
+          localStorage.removeItem('nu_borrow_draft');
+        } catch (e) {}
+        Swal.fire({
+          icon: 'success',
+          title: 'ยืมอุปกรณ์สำเร็จ!',
+          text: res.message,
+          confirmButtonColor: '#f97316'
+        }).then(function() {
+          window.location.href = 'index.html';
+        });
+      } else {
+        Swal.fire({ icon: 'error', title: 'ไม่สำเร็จ', text: (res && res.message) || 'เกิดข้อผิดพลาดในการบันทึก' });
+      }
+    } catch (err) {
+      setSubmitLoading(false);
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+    }
+  }
+
+  function setSubmitLoading(loading) {
+    document.getElementById('submitBtn').disabled = loading;
+    document.getElementById('submitBtnText').textContent = loading ? 'กำลังบันทึก...' : 'ส่งฟอร์มยืมอุปกรณ์';
+    document.getElementById('submitSpinner').classList.toggle('hidden', !loading);
+  }
+
+  /* ═══ Utils & Init ═══ */
+  function escHtml(str) {
+    if (!str) return '';
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var searchEl = document.getElementById('eqSearchInput');
+    if (searchEl) {
+      searchEl.addEventListener('input', function() {
+        renderCatalog();
+      });
+    }
+
+    setupBorrowDropZones();
+    restoreBorrowDraft();
+  });
+</script>
+
+</body>
+</html>

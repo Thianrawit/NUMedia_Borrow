@@ -1,346 +1,784 @@
 /**
  * ============================================================
- * NU Media Club - ระบบยืม-คืนอุปกรณ์ (Backend REST API)
+ * NU Media Club - Backend REST API (Single GAS Project)
  * ============================================================
  * Spreadsheet ID : 1i5niBkkHdqmrIFair6DANcdAfwGhpHjyR2szQz_tqKE
  * Drive Folder ID: 1AlycOE3qm-PbYqXcN44-bObCEYxiyJwTszIaqmAseJDvob53bXPfCq7TI4P-13zSzJcilrij
  * ============================================================
+ * ไฟล์นี้เป็นไฟล์เดียวที่ต้องนำไปใส่ใน Google Apps Script Editor
+ * Frontend จะโฮสต์อยู่ภายนอกบน GitHub Pages และสื่อสารผ่าน API_URL
+ * ============================================================
  */
 
-const SPREADSHEET_ID  = '1i5niBkkHdqmrIFair6DANcdAfwGhpHjyR2szQz_tqKE';
-const DRIVE_FOLDER_ID = '1AlycOE3qm-PbYqXcN44-bObCEYxiyJwTszIaqmAseJDvob53bXPfCq7TI4P-13zSzJcilrij';
-const SHEET_BORROW    = 'ยืมอุปกรณ์';
-const SHEET_RETURN    = 'คืนอุปกรณ์';
+const SS_ID = "1i5niBkkHdqmrIFair6DANcdAfwGhpHjyR2szQz_tqKE";
+const FOLDER_ID =
+  "1AlycOE3qm-PbYqXcN44-bObCEYxiyJwTszIaqmAseJDvob53bXPfCq7TI4P-13zSzJcilrij";
+const SH_BORROW_V1 = "ยืมอุปกรณ์";
+const SH_RETURN = "คืนอุปกรณ์";
+const SH_CATALOG = "คลังอุปกรณ์";
+const SH_BORROW_V2 = "ยืมอุปกรณ์_v2";
+const SH_ADMIN = "Admin";
 
-/**
- * ──────────────────────────────────────────────
- * ฟังก์ชันสำหรับกด Run ใน Apps Script Editor 1 ครั้ง
- * เพื่อเปิดสิทธิ์การเข้าถึง Google Drive (DriveApp)
- * ──────────────────────────────────────────────
- */
-function authorizeDrive() {
-  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  Logger.log("Drive Access OK! Folder Name: " + folder.getName());
-}
-
-/* ──────────────────────────────────────────────
- * API Router – doGet (GET Requests)
- * ────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════
+ * 1) doGet — Handle GET Requests
+ * ══════════════════════════════════════════════════ */
 function doGet(e) {
   try {
-    const params = (e && e.parameter) || {};
-    const action = params.action || '';
+    const action = (e && e.parameter && e.parameter.action) || "";
+
+    if (!action) {
+      return createJsonResponse_({
+        status: "online",
+        service: "NU Media Club Equipment API",
+        version: "2.0.0",
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     let result;
-    if (action === 'getPublicBorrowList') {
-      result = { success: true, data: getPublicBorrowList() };
-    } else if (action === 'verifyLogin') {
-      result = verifyLoginAndGetBorrows(params.email, params.studentId);
-    } else {
+    if (action === "getDashboardData" || action === "getPublicBorrowList") {
+      result = handleGetDashboardData();
+    } else if (action === "getBorrowCatalog") {
+      result = handleGetBorrowCatalog();
+    } else if (
+      action === "verifyLogin" ||
+      action === "verifyLoginAndGetBorrows"
+    ) {
+      result = verifyLoginAndGetBorrows(
+        e.parameter.email,
+        e.parameter.studentId,
+      );
+    } else if (action === "adminGetDashboard") {
       result = {
         success: true,
-        message: 'NU Media Borrow API is running 🚀',
-        endpoints: ['?action=getPublicBorrowList', '?action=verifyLogin&email=...&studentId=...']
+        catalog: adminGetDashboard(e.parameter.adminEmail || ""),
       };
+    } else {
+      result = { success: false, message: "Unknown GET action: " + action };
     }
 
     return createJsonResponse_(result);
   } catch (err) {
-    return createJsonResponse_({ success: false, message: 'Server Error: ' + err.message });
+    return createJsonResponse_({
+      success: false,
+      message: "doGet Error: " + err.toString(),
+    });
   }
 }
 
-/* ──────────────────────────────────────────────
- * API Router – doPost (POST Requests)
- * ────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════
+ * 2) doPost — Handle POST Requests
+ * ══════════════════════════════════════════════════ */
 function doPost(e) {
   try {
     let payload = {};
     if (e && e.postData && e.postData.contents) {
-      payload = JSON.parse(e.postData.contents);
+      try {
+        payload = JSON.parse(e.postData.contents);
+      } catch (errJson) {
+        payload = e.parameter || {};
+      }
     } else if (e && e.parameter) {
       payload = e.parameter;
     }
 
-    const action = payload.action || '';
+    const action =
+      payload.action || (e && e.parameter && e.parameter.action) || "";
     let result;
 
-    if (action === 'submitReturn') {
-      result = submitReturnItem(payload);
-    } else if (action === 'verifyLogin') {
+    if (action === "submitBorrowV2") {
+      result = submitBorrowV2(payload);
+    } else if (
+      action === "verifyLogin" ||
+      action === "verifyLoginAndGetBorrows"
+    ) {
       result = verifyLoginAndGetBorrows(payload.email, payload.studentId);
-    } else if (action === 'getPublicBorrowList') {
-      result = { success: true, data: getPublicBorrowList() };
+    } else if (action === "submitReturn" || action === "submitReturnItem") {
+      result = submitReturnItem(payload);
+    } else if (action === "adminLogin") {
+      result = adminLogin(payload.email, payload.password);
+    } else if (action === "adminAddEquipment") {
+      result = adminAddEquipment(
+        payload.name,
+        payload.category,
+        payload.itemId,
+        payload.imageBase64,
+        payload.imageMime,
+      );
+    } else if (action === "adminDeleteEquipment") {
+      result = adminDeleteEquipment(payload.rowIndex);
+    } else if (action === "adminGetDashboard") {
+      result = {
+        success: true,
+        catalog: adminGetDashboard(payload.adminEmail || ""),
+      };
     } else {
-      result = { success: false, message: 'Invalid action: ' + action };
+      result = { success: false, message: "Unknown POST action: " + action };
     }
 
     return createJsonResponse_(result);
   } catch (err) {
-    return createJsonResponse_({ success: false, message: 'Server Error: ' + err.message });
-  }
-}
-
-/* ──────────────────────────────────────────────
- * 1) getPublicBorrowList
- *    ดึงรายการที่ยังไม่คืน (สถานะ != "คืนแล้ว")
- *    ไม่ส่ง email & studentId เพื่อความปลอดภัย
- * ────────────────────────────────────────────── */
-function getPublicBorrowList() {
-  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_BORROW);
-  const data  = sheet.getDataRange().getValues();
-  const result = [];
-
-  for (let i = 1; i < data.length; i++) {
-    const row    = data[i];
-    const items  = (row[8] || '').toString().trim(); // Col I – รายชื่ออุปกรณ์
-    const name   = (row[3] || '').toString().trim(); // Col D – ชื่อ-นามสกุล
-    let status   = (row[14] || '').toString().trim(); // Col O (idx 14)
-
-    // ข้ามแถวที่ว่างเปล่า
-    if (!items && !name) continue;
-
-    // ข้ามรายการที่คืนแล้ว
-    if (status === 'คืนแล้ว') continue;
-
-    // ถ้าสถานะว่างเปล่า (ของเพิ่งกรอกเข้ามา) ให้ถือว่าเป็น "กำลังยืม"
-    if (!status) {
-      status = 'กำลังยืม';
-    }
-
-    result.push({
-      nickname:   row[4]  || '',                          // Col E – ชื่อเล่น
-      department: row[6]  || '',                          // Col G – ฝ่าย
-      items:      row[8]  || '',                          // Col I – รายชื่ออุปกรณ์
-      borrowDate: formatDate_(row[9]),                   // Col J – วันที่ยืม
-      dueDate:    formatDate_(row[13]),                  // Col N – วันที่กำหนดคืน
-      status:     status,                                 // Col O – สถานะ
-      imageUrls:  convertDriveUrls_(row[10] || '')        // Col K – รูปอุปกรณ์หลายรูป (แปลงให้โหลดได้)
+    return createJsonResponse_({
+      success: false,
+      message: "doPost Error: " + err.toString(),
     });
   }
-
-  return result;
 }
 
-/* ──────────────────────────────────────────────
- * 2) verifyLoginAndGetBorrows
- *    ตรวจสอบ email + รหัสนิสิต แล้วส่งรายการยืมกลับ
- * ────────────────────────────────────────────── */
-function verifyLoginAndGetBorrows(email, studentId) {
-  email     = (email || '').toLowerCase().trim();
-  studentId = (studentId || '').toString().replace(/\D/g, '');
+/* ══════════════════════════════════════════════════
+ * HELPER — Response, Spreadsheet, Drive
+ * ══════════════════════════════════════════════════ */
+function createJsonResponse_(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
+    ContentService.MimeType.JSON,
+  );
+}
 
-  if (!email || !studentId) {
-    return { success: false, message: 'กรุณากรอกอีเมลและรหัสนิสิตให้ครบถ้วน' };
+function ss_() {
+  return SpreadsheetApp.openById(SS_ID);
+}
+function sheet_(n) {
+  return ss_().getSheetByName(n);
+}
+
+function fmtDate_(v) {
+  if (!v) return "";
+  if (v instanceof Date)
+    return Utilities.formatDate(v, "Asia/Bangkok", "dd/MM/yyyy");
+  return v.toString();
+}
+
+function driveUrl_(raw) {
+  if (!raw) return "";
+  raw = raw.toString().trim();
+  if (raw.indexOf("lh3.googleusercontent.com") !== -1) return raw;
+  var m = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (!m) m = raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m ? "https://lh3.googleusercontent.com/d/" + m[1] : raw;
+}
+
+function driveUrls_(raw) {
+  if (!raw) return [];
+  return raw
+    .toString()
+    .split(",")
+    .map(function (u) {
+      return driveUrl_(u.trim());
+    })
+    .filter(Boolean);
+}
+
+function uploadImage_(base64, mime, prefix) {
+  if (!base64 || !mime) return "";
+  try {
+    var decoded = Utilities.base64Decode(base64);
+    var ext = mime.indexOf("png") !== -1 ? ".png" : ".jpg";
+    var blob = Utilities.newBlob(
+      decoded,
+      mime,
+      prefix + "_" + Date.now() + ext,
+    );
+    var folder;
+    try {
+      folder = DriveApp.getFolderById(FOLDER_ID);
+    } catch (ef) {
+      folder = DriveApp.getRootFolder();
+    }
+    var file = folder.createFile(blob);
+    try {
+      file.setSharing(
+        DriveApp.Access.ANYONE_WITH_LINK,
+        DriveApp.Permission.VIEW,
+      );
+    } catch (es) {
+      /* org policy */
+    }
+    return "https://lh3.googleusercontent.com/d/" + file.getId();
+  } catch (eu) {
+    Logger.log("Upload error: " + eu.message);
+    return "";
   }
+}
 
-  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_BORROW);
-  const data  = sheet.getDataRange().getValues();
+function authorizeDrive() {
+  var f = DriveApp.getFolderById(FOLDER_ID);
+  Logger.log("Drive OK: " + f.getName());
+}
 
-  let user  = null;
-  const items = [];
+/* ══════════════════════════════════════════════════
+ * 3) API Endpoints Implementation
+ * ══════════════════════════════════════════════════ */
 
-  for (let i = 1; i < data.length; i++) {
-    const row       = data[i];
-    const rowEmail  = (row[1] || '').toString().toLowerCase().trim();   // Col B
-    const rowSid    = (row[5] || '').toString().replace(/\D/g, '');      // Col F
-    let rowStatus   = (row[14] || '').toString().trim();                  // Col O
+// --- Dashboard Data ---
+function handleGetDashboardData() {
+  var data = getDashboardData();
+  return {
+    success: true,
+    data: data.borrows, // compatibility with old index.html
+    borrows: data.borrows,
+    catalog: data.catalog,
+  };
+}
 
-    if (rowEmail === email && rowSid === studentId) {
-      if (!user) {
-        user = {
-          name:       row[3] || '',  // Col D – ชื่อ-นามสกุล
-          nickname:   row[4] || '',  // Col E – ชื่อเล่น
-          studentId:  rowSid,
-          email:      rowEmail,
-          department: row[6] || ''   // Col G – ฝ่าย
-        };
-      }
-      // ข้ามรายการที่คืนแล้ว
-      if (rowStatus === 'คืนแล้ว') continue;
+function getDashboardData() {
+  var result = [];
 
-      // ถ้าสถานะว่างเปล่า (เพิ่งยืมเข้ามา) ให้ถือว่าเป็น "กำลังยืม"
-      if (!rowStatus) {
-        rowStatus = 'กำลังยืม';
-      }
-
-      items.push({
-        rowIndex:   i + 1,                            // 1-based row number ใน Sheet
-        items:      row[8]  || '',                     // Col I
-        borrowDate: formatDate_(row[9]),               // Col J
-        dueDate:    formatDate_(row[13]),              // Col N
-        imageUrls:  convertDriveUrls_(row[10] || ''),  // Col K – รูปอุปกรณ์หลายรูป (แปลง URL)
-        status:     rowStatus                          // Col O
+  // V1 Legacy
+  var s1 = sheet_(SH_BORROW_V1);
+  if (s1) {
+    var d1 = s1.getDataRange().getValues();
+    for (var i = 1; i < d1.length; i++) {
+      var r = d1[i];
+      var st = (r[14] || "").toString().trim();
+      if (st === "คืนแล้ว") continue;
+      if (!st) st = "กำลังยืม";
+      var items = (r[8] || "").toString().trim();
+      var name = (r[3] || "").toString().trim();
+      if (!items && !name) continue;
+      result.push({
+        nickname: r[4] || "",
+        department: r[6] || "",
+        items: items,
+        borrowDate: fmtDate_(r[9]),
+        dueDate: fmtDate_(r[13]),
+        status: st,
+        groupImageUrl: driveUrl_(r[10] || ""),
+        imageUrls: driveUrls_(r[10] || ""),
+        isLegacy: true,
       });
     }
   }
 
-  // กรณี 1: ไม่เคยมีประวัติการยืมในระบบเลย
-  if (!user) {
-    return { success: true, user: null, items: [], hasHistory: false, message: 'ไม่มีรายการยืมอุปกรณ์ในตอนนี้' };
+  // V2 New
+  var s2 = sheet_(SH_BORROW_V2);
+  if (s2) {
+    var d2 = s2.getDataRange().getValues();
+    for (var j = 1; j < d2.length; j++) {
+      var r2 = d2[j];
+      var st2 = (r2[16] || "").toString().trim();
+      if (st2 === "คืนแล้ว") continue;
+      if (!st2) st2 = "กำลังยืม";
+      var items2 = (r2[8] || "").toString().trim();
+      var name2 = (r2[3] || "").toString().trim();
+      if (!items2 && !name2) continue;
+      result.push({
+        nickname: r2[4] || "",
+        department: r2[6] || "",
+        items: items2,
+        borrowDate: fmtDate_(r2[9]),
+        dueDate: fmtDate_(r2[15]),
+        status: st2,
+        groupImageUrl: driveUrl_(r2[10] || ""),
+        imageUrls: driveUrls_(r2[10] || ""),
+        isLegacy: false,
+      });
+    }
   }
 
-  // กรณี 2: มีประวัติการยืม (items อาจว่างถ้าคืนหมดแล้ว หรือมีรายการค้างส่ง)
+  var catalog = getCatalogRaw_();
+  return { borrows: result, catalog: catalog };
+}
+
+// --- Borrow Catalog ---
+function handleGetBorrowCatalog() {
+  var catalog = getBorrowCatalog();
+  return {
+    success: true,
+    data: catalog,
+    catalog: catalog,
+  };
+}
+
+function getBorrowCatalog() {
+  var catalog = getCatalogRaw_();
+  var borrowedSet = {};
+
+  // Check V1
+  var s1 = sheet_(SH_BORROW_V1);
+  if (s1) {
+    var d1 = s1.getDataRange().getValues();
+    for (var i = 1; i < d1.length; i++) {
+      var st = (d1[i][14] || "").toString().trim();
+      if (st === "คืนแล้ว") continue;
+      var itm = (d1[i][8] || "").toString().trim();
+      if (itm) {
+        itm.split(",").forEach(function (x) {
+          borrowedSet[x.trim().toLowerCase()] = true;
+        });
+      }
+    }
+  }
+
+  // Check V2
+  var s2 = sheet_(SH_BORROW_V2);
+  if (s2) {
+    var d2 = s2.getDataRange().getValues();
+    for (var j = 1; j < d2.length; j++) {
+      var st2 = (d2[j][16] || "").toString().trim();
+      if (st2 === "คืนแล้ว") continue;
+      var itm2 = (d2[j][8] || "").toString().trim();
+      if (itm2) {
+        itm2.split(",").forEach(function (x) {
+          borrowedSet[x.trim().toLowerCase()] = true;
+        });
+      }
+    }
+  }
+
+  catalog.forEach(function (c) {
+    var isBorrowedByBorrowSheet = !!borrowedSet[(c.name || "").toLowerCase()];
+    var isBorrowedByCatalogStatus = c.status === "ถูกยืม";
+    c.isBorrowed = isBorrowedByBorrowSheet || isBorrowedByCatalogStatus;
+  });
+
+  return catalog;
+}
+
+function getCatalogRaw_() {
+  var sh = sheet_(SH_CATALOG);
+  if (!sh) return [];
+  var data = sh.getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    if (!(r[0] || "").toString().trim() && !(r[1] || "").toString().trim())
+      continue;
+    out.push({
+      rowIndex: i + 1,
+      id: (r[0] || "").toString().trim(),
+      name: (r[1] || "").toString().trim(),
+      imageUrl: driveUrl_(r[2] || ""),
+      dateAdded: fmtDate_(r[3]),
+      status: (r[4] || "พร้อมใช้งาน").toString().trim(),
+      category: (r[5] || "").toString().trim(),
+    });
+  }
+  return out;
+}
+
+// --- Submit Borrow V2 ---
+function submitBorrowV2(payload) {
+  try {
+    var groupUrl = uploadImage_(
+      payload.groupImageBase64,
+      payload.groupImageMime || "image/jpeg",
+      "borrow_group",
+    );
+    var otherUrl = "";
+    if (payload.otherImageBase64) {
+      otherUrl = uploadImage_(
+        payload.otherImageBase64,
+        payload.otherImageMime || "image/jpeg",
+        "borrow_other",
+      );
+    }
+
+    var sh = sheet_(SH_BORROW_V2);
+    var row = [
+      new Date(), // A: ประทับเวลา
+      (payload.email || "").trim(), // B: อีเมล
+      payload.agreement || "ยอมรับ", // C: ข้อตกลง
+      (payload.fullName || "").trim(), // D: ชื่อ-สกุล
+      (payload.nickname || "").trim(), // E: ชื่อเล่น
+      (payload.studentId || "").trim(), // F: รหัสนิสิต
+      (payload.department || "").trim(), // G: ฝ่าย
+      (payload.contact || "").trim(), // H: ช่องทางติดต่อ
+      (payload.selectedItems || "").trim(), // I: รายชื่ออุปกรณ์
+      payload.borrowDate || "", // J: วันที่ยืม
+      groupUrl, // K: รูปรวมหน้างาน
+      otherUrl, // L: รูปอุปกรณ์อื่นๆ
+      (payload.otherDetail || "").trim(), // M: รายละเอียดอื่นๆ
+      (payload.toldWhom || "").trim(), // N: บอกใคร
+      (payload.roomOpener || "").trim(), // O: ใครเปิดห้อง
+      payload.dueDate || "", // P: วันที่คืน
+      "กำลังยืม", // Q: สถานะ
+      "", // R: แจ้งเตือนล่าสุด
+    ];
+    sh.appendRow(row);
+
+    // อัปเดตสถานะใน "คลังอุปกรณ์" เป็น "ถูกยืม"
+    try {
+      var catSheet = sheet_(SH_CATALOG);
+      if (catSheet) {
+        var catData = catSheet.getDataRange().getValues();
+        var selectedList = (payload.selectedItems || "")
+          .split(",")
+          .map(function (s) {
+            return s.trim().toLowerCase();
+          });
+        for (var k = 1; k < catData.length; k++) {
+          var eqName = (catData[k][1] || "").toString().trim().toLowerCase();
+          if (selectedList.indexOf(eqName) !== -1) {
+            catSheet.getRange(k + 1, 5).setValue("ถูกยืม");
+          }
+        }
+      }
+    } catch (eCat) {
+      Logger.log("Update catalog status on borrow error: " + eCat.message);
+    }
+
+    return { success: true, message: "บันทึกการยืมอุปกรณ์สำเร็จ 🎉" };
+  } catch (err) {
+    return { success: false, message: "เกิดข้อผิดพลาด: " + err.message };
+  }
+}
+
+// --- Verify Login (V1 + V2) ---
+function verifyLoginAndGetBorrows(email, studentId) {
+  email = (email || "").toLowerCase().trim();
+  studentId = (studentId || "").toString().replace(/\D/g, "");
+  if (!email || !studentId) {
+    return { success: false, message: "กรุณากรอกอีเมลและรหัสนิสิตให้ครบถ้วน" };
+  }
+
+  var user = null;
+  var items = [];
+
+  // V1 Legacy
+  var s1 = sheet_(SH_BORROW_V1);
+  if (s1) {
+    var d1 = s1.getDataRange().getValues();
+    for (var i = 1; i < d1.length; i++) {
+      var r = d1[i];
+      var rEmail = (r[1] || "").toString().toLowerCase().trim();
+      var rSid = (r[5] || "").toString().replace(/\D/g, "");
+      if (rEmail !== email || rSid !== studentId) continue;
+      if (!user) {
+        user = {
+          name: r[3] || "",
+          nickname: r[4] || "",
+          studentId: rSid,
+          email: rEmail,
+          department: r[6] || "",
+        };
+      }
+      var st = (r[14] || "").toString().trim();
+      if (st === "คืนแล้ว") continue;
+      if (!st) st = "กำลังยืม";
+      items.push({
+        sourceSheet: SH_BORROW_V1,
+        rowIndex: i + 1,
+        items: (r[8] || "").toString(),
+        borrowDate: fmtDate_(r[9]),
+        dueDate: fmtDate_(r[13]),
+        imageUrl: driveUrl_(r[10] || ""),
+        groupImageUrl: driveUrl_(r[10] || ""),
+        status: st,
+      });
+    }
+  }
+
+  // V2 New
+  var s2 = sheet_(SH_BORROW_V2);
+  if (s2) {
+    var d2 = s2.getDataRange().getValues();
+    for (var j = 1; j < d2.length; j++) {
+      var r2 = d2[j];
+      var rEmail2 = (r2[1] || "").toString().toLowerCase().trim();
+      var rSid2 = (r2[5] || "").toString().replace(/\D/g, "");
+      if (rEmail2 !== email || rSid2 !== studentId) continue;
+      if (!user) {
+        user = {
+          name: r2[3] || "",
+          nickname: r2[4] || "",
+          studentId: rSid2,
+          email: rEmail2,
+          department: r2[6] || "",
+        };
+      }
+      var st2 = (r2[16] || "").toString().trim();
+      if (st2 === "คืนแล้ว") continue;
+      if (!st2) st2 = "กำลังยืม";
+      items.push({
+        sourceSheet: SH_BORROW_V2,
+        rowIndex: j + 1,
+        items: (r2[8] || "").toString(),
+        borrowDate: fmtDate_(r2[9]),
+        dueDate: fmtDate_(r2[15]),
+        imageUrl: driveUrl_(r2[10] || ""),
+        groupImageUrl: driveUrl_(r2[10] || ""),
+        status: st2,
+      });
+    }
+  }
+
+  if (!user) {
+    return {
+      success: true,
+      user: null,
+      items: [],
+      hasHistory: false,
+      message: "ไม่มีรายการยืมอุปกรณ์ในตอนนี้",
+    };
+  }
   return { success: true, user: user, items: items, hasHistory: true };
 }
 
-/* ──────────────────────────────────────────────
- * 3) submitReturnItem
- *    บันทึกการคืนอุปกรณ์ + อัปโหลดรูปลง Google Drive
- * ────────────────────────────────────────────── */
+// --- Submit Return ---
 function submitReturnItem(payload) {
   try {
-    const ss          = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const borrowSheet = ss.getSheetByName(SHEET_BORROW);
-    const returnSheet = ss.getSheetByName(SHEET_RETURN);
-    const rowIdx      = Number(payload.rowIndex); // 1-based
-
+    var srcSheet = payload.sourceSheet || SH_BORROW_V1;
+    var rowIdx = Number(payload.rowIndex);
     if (!rowIdx || isNaN(rowIdx)) {
-      return { success: false, message: 'Row index ไม่ถูกต้อง' };
+      return { success: false, message: "ข้อมูลแถวไม่ถูกต้อง" };
     }
 
-    // --- ดึงข้อมูลเดิมจากแท็บยืม ---
-    const borrowRow = borrowSheet.getRange(rowIdx, 1, 1, 15).getValues()[0];
-    const emailVal      = borrowRow[1]  || ''; // Col B
-    const nameVal       = borrowRow[3]  || ''; // Col D
-    const nicknameVal   = borrowRow[4]  || ''; // Col E
-    const sidVal        = borrowRow[5]  || ''; // Col F
-    const deptVal       = borrowRow[6]  || ''; // Col G
-    const contactVal    = borrowRow[7]  || ''; // Col H
-    const itemsVal      = borrowRow[8]  || ''; // Col I
-    const borrowDateVal = borrowRow[9]  || ''; // Col J
+    var sh = sheet_(srcSheet);
+    if (!sh) return { success: false, message: "ไม่พบชีต: " + srcSheet };
 
-    // ตรวจสอบ studentId ให้ตรงกัน
-    const cleanSid = (payload.studentId || '').toString().replace(/\D/g, '');
-    const sheetSid = (sidVal || '').toString().replace(/\D/g, '');
-    if (cleanSid !== sheetSid) {
-      return { success: false, message: 'รหัสนิสิตไม่ตรงกับรายการนี้' };
+    // ตรวจสอบรหัสนิสิต Col F (idx 5)
+    var sheetSid = (sh.getRange(rowIdx, 6).getValue() || "")
+      .toString()
+      .replace(/\D/g, "");
+    var cleanSid = (payload.studentId || "").toString().replace(/\D/g, "");
+    if (cleanSid && sheetSid && cleanSid !== sheetSid) {
+      return { success: false, message: "รหัสนิสิตไม่ตรงกับรายการนี้" };
     }
 
-    // --- อัปโหลดรูปภาพ Base64 ลง Drive (พร้อมระบบป้องกัน Error สิทธิ์โฟลเดอร์) ---
-    let imageUrl = '';
-    if (payload.imageBase64 && payload.imageMimeType) {
-      try {
-        const decoded  = Utilities.base64Decode(payload.imageBase64);
-        const blob     = Utilities.newBlob(decoded, payload.imageMimeType, 'return_' + Date.now() + '.jpg');
-        
-        let folder;
-        try {
-          folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-        } catch (eFolder) {
-          // ถ้าเข้าถึง Folder ID ไม่ได้ (เช่น สิทธิ์ไม่พอ หรือ ID ผิด) ให้เซฟลง Root Drive
-          Logger.log('Cannot access folder ID, fallback to root: ' + eFolder.message);
-          folder = DriveApp.getRootFolder();
+    // อัปโหลดรูปหลักฐานคืน
+    var imageUrl = uploadImage_(
+      payload.imageBase64,
+      payload.imageMimeType || "image/jpeg",
+      "return",
+    );
+
+    // ดึงข้อมูลแถวเดิม
+    var numCols = srcSheet === SH_BORROW_V2 ? 18 : 15;
+    var borrowRow = sh.getRange(rowIdx, 1, 1, numCols).getValues()[0];
+
+    var emailVal = borrowRow[1] || "";
+    var nameVal = borrowRow[3] || "";
+    var nickVal = borrowRow[4] || "";
+    var sidVal = borrowRow[5] || "";
+    var deptVal = borrowRow[6] || "";
+    var contactVal = borrowRow[7] || "";
+    var itemsVal = borrowRow[8] || "";
+    var borrowDateVal = borrowRow[9] || "";
+
+    // บันทึกประวัติลง "คืนอุปกรณ์"
+    var ts = new Date();
+    var returnRow = [
+      ts, // A: ประทับเวลา
+      emailVal, // B: อีเมล
+      nameVal, // C: ชื่อ-สกุล
+      nickVal, // D: ชื่อเล่น
+      sidVal, // E: รหัสนิสิต
+      deptVal, // F: ฝ่าย
+      contactVal, // G: ช่องทางติดต่อ
+      itemsVal, // H: รายชื่ออุปกรณ์
+      borrowDateVal, // I: วันที่ยืม
+      imageUrl, // J: รูปหลักฐานคืน
+      payload.toldWhom || "", // K: บอกใคร
+      payload.roomOpener || "", // L: ใครเปิดห้อง
+      Utilities.formatDate(ts, "Asia/Bangkok", "d/M/yyyy, HH:mm:ss"), // M: วันที่คืน
+    ];
+    var returnSheet = sheet_(SH_RETURN);
+    if (returnSheet) returnSheet.appendRow(returnRow);
+
+    // อัปเดตสถานะในแท็บยืมเป็น "คืนแล้ว"
+    var statusCol = srcSheet === SH_BORROW_V2 ? 17 : 15;
+    sh.getRange(rowIdx, statusCol).setValue("คืนแล้ว");
+
+    // อัปเดตสถานะใน "คลังอุปกรณ์" กลับเป็น "พร้อมใช้งาน"
+    try {
+      var catSheet = sheet_(SH_CATALOG);
+      if (catSheet && itemsVal) {
+        var catData = catSheet.getDataRange().getValues();
+        var returnedList = itemsVal
+          .toString()
+          .split(",")
+          .map(function (s) {
+            return s.trim().toLowerCase();
+          });
+        for (var c = 1; c < catData.length; c++) {
+          var eqName = (catData[c][1] || "").toString().trim().toLowerCase();
+          if (returnedList.indexOf(eqName) !== -1) {
+            catSheet.getRange(c + 1, 5).setValue("พร้อมใช้งาน");
+          }
         }
+      }
+    } catch (eResetCat) {
+      Logger.log("Reset catalog status error: " + eResetCat.message);
+    }
 
-        const file = folder.createFile(blob);
+    return { success: true, message: "คืนอุปกรณ์สำเร็จเรียบร้อยแล้ว 🎉" };
+  } catch (err) {
+    return { success: false, message: "เกิดข้อผิดพลาด: " + err.message };
+  }
+}
 
-        // พยายามเปิดแชร์ไฟล์ (หากติด Policy ขององค์กร จะไม่ทำให้ระบบล่ม)
-        try {
-          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        } catch (eShare) {
-          Logger.log('Set sharing skipped: ' + eShare.message);
+// --- Admin ---
+function adminLogin(email, password) {
+  email = (email || "").toLowerCase().trim();
+  password = (password || "").trim();
+  if (!email || !password) {
+    return { success: false, message: "กรุณากรอกข้อมูลให้ครบ" };
+  }
+
+  var sh = sheet_(SH_ADMIN);
+  if (!sh) return { success: false, message: "ไม่พบชีต Admin" };
+
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    var rEmail = (r[0] || "").toString().toLowerCase().trim();
+    var rPass = (r[1] || "").toString().trim();
+    if (rEmail === email && rPass === password) {
+      return {
+        success: true,
+        admin: {
+          email: rEmail,
+          name: r[2] || "",
+          role: r[3] || "Staff",
+        },
+      };
+    }
+  }
+  return { success: false, message: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
+}
+
+function adminGetDashboard(adminEmail) {
+  var catalog = getCatalogRaw_();
+  var borrowMap = {};
+
+  // V1
+  var s1 = sheet_(SH_BORROW_V1);
+  if (s1) {
+    var d1 = s1.getDataRange().getValues();
+    for (var i = 1; i < d1.length; i++) {
+      var r = d1[i];
+      var st = (r[14] || "").toString().trim();
+      if (st === "คืนแล้ว") continue;
+      if (!st) st = "กำลังยืม";
+      var names = (r[8] || "").toString().split(",");
+      names.forEach(function (n) {
+        var key = n.trim().toLowerCase();
+        if (key) {
+          borrowMap[key] = {
+            nickname: r[4] || "",
+            studentId: (r[5] || "").toString(),
+            borrowDate: fmtDate_(r[9]),
+            dueDate: fmtDate_(r[13]),
+            status: st,
+          };
         }
+      });
+    }
+  }
 
-        imageUrl = 'https://lh3.googleusercontent.com/d/' + file.getId();
-      } catch (eUpload) {
-        Logger.log('Image upload error: ' + eUpload.message);
-        imageUrl = '';
+  // V2
+  var s2 = sheet_(SH_BORROW_V2);
+  if (s2) {
+    var d2 = s2.getDataRange().getValues();
+    for (var j = 1; j < d2.length; j++) {
+      var r2 = d2[j];
+      var st2 = (r2[16] || "").toString().trim();
+      if (st2 === "คืนแล้ว") continue;
+      if (!st2) st2 = "กำลังยืม";
+      var names2 = (r2[8] || "").toString().split(",");
+      names2.forEach(function (n) {
+        var key = n.trim().toLowerCase();
+        if (key) {
+          borrowMap[key] = {
+            nickname: r2[4] || "",
+            studentId: (r2[5] || "").toString(),
+            borrowDate: fmtDate_(r2[9]),
+            dueDate: fmtDate_(r2[15]),
+            status: st2,
+          };
+        }
+      });
+    }
+  }
+
+  catalog.forEach(function (c) {
+    var key = (c.name || "").toLowerCase();
+    if (borrowMap[key]) {
+      c.borrower = borrowMap[key];
+    } else {
+      c.borrower = null;
+    }
+  });
+
+  return catalog;
+}
+
+function getNextEquipmentId_(catOrPrefix) {
+  var prefixMap = {
+    ไมค์: "MIC",
+    ขาตั้ง: "POD",
+    ไฟ: "LAM",
+    เลนส์: "LEN",
+    กริมบอล: "GIM",
+    กล้อง: "CAM",
+    อื่นๆ: "NUM",
+    MIC: "MIC",
+    POD: "POD",
+    LAM: "LAM",
+    LEN: "LEN",
+    GIM: "GIM",
+    CAM: "CAM",
+    NUM: "NUM",
+  };
+  var prefix = prefixMap[catOrPrefix] || "NUM";
+  var sh = sheet_(SH_CATALOG);
+  if (!sh) return prefix + "-001";
+
+  var data = sh.getDataRange().getValues();
+  var maxNum = 0;
+  var re = new RegExp("^" + prefix + "[-_]?(\\d+)", "i");
+
+  for (var i = 1; i < data.length; i++) {
+    var idStr = (data[i][0] || "").toString().trim();
+    if (!idStr) continue;
+    var match = idStr.match(re);
+    if (match) {
+      var num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
       }
     }
+  }
+  var nextNum = maxNum + 1;
+  return prefix + "-" + String(nextNum).padStart(3, "0");
+}
 
-    // --- Append ลงแท็บ "คืนอุปกรณ์" ---
-    const timestamp = new Date();
-    // จัดรูปแบบวันที่และเวลา เช่น 24/8/2026, 21:21:00
-    const returnDateTimeFormatted = Utilities.formatDate(timestamp, 'Asia/Bangkok', 'd/M/yyyy, HH:mm:ss');
+function adminAddEquipment(name, category, itemId, imageBase64, imageMime) {
+  try {
+    var imgUrl = uploadImage_(
+      imageBase64,
+      imageMime || "image/jpeg",
+      "catalog",
+    );
+    var sh = sheet_(SH_CATALOG);
+    var autoId =
+      (itemId || "").toString().trim() || getNextEquipmentId_(category);
 
-    // Mapping ตาม Col A–M (idx 0–12)
-    const newRow = [
-      timestamp,                // Col A (idx 0) – ประทับเวลา
-      emailVal,                 // Col B (idx 1) – อีเมล
-      nameVal,                  // Col C (idx 2) – ชื่อ-นามสกุล
-      nicknameVal,              // Col D (idx 3) – ชื่อเล่น
-      sidVal,                   // Col E (idx 4) – รหัสนิสิต
-      deptVal,                  // Col F (idx 5) – ฝ่าย
-      contactVal,               // Col G (idx 6) – ช่องทางติดต่อ
-      itemsVal,                 // Col H (idx 7) – รายชื่ออุปกรณ์
-      borrowDateVal,            // Col I (idx 8) – วันที่ยืม
-      imageUrl,                 // Col J (idx 9) – รูปอุปกรณ์ที่คืน
-      payload.toldWhom || '',   // Col K (idx 10) – ได้บอกใครบ้าง
-      payload.roomOpener || '', // Col L (idx 11) – ใครเป็นคนเปิดห้องให้
-      returnDateTimeFormatted   // Col M (idx 12) – วันที่คืน เช่น 24/8/2026, 21:21:00
-    ];
-    returnSheet.appendRow(newRow);
+    sh.appendRow([
+      autoId, // A: รหัสอุปกรณ์
+      (name || "").trim(), // B: ชื่ออุปกรณ์
+      imgUrl, // C: ลิงก์รูปภาพ Drive
+      Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyy-MM-dd"), // D: วันที่เพิ่ม
+      "พร้อมใช้งาน", // E: สถานะ
+      (category || "").trim(), // F: ประเภท
+    ]);
 
-    // --- อัปเดตสถานะเป็น "คืนแล้ว" ในแท็บยืม Col O (col 15) ---
-    borrowSheet.getRange(rowIdx, 15).setValue('คืนแล้ว');
-
-    return { success: true, message: 'คืนอุปกรณ์สำเร็จเรียบร้อยแล้ว 🎉' };
+    return {
+      success: true,
+      message: "เพิ่มอุปกรณ์สำเร็จ: " + name + " (" + autoId + ")",
+      id: autoId,
+    };
   } catch (err) {
-    return { success: false, message: 'เกิดข้อผิดพลาด: ' + err.message };
+    return { success: false, message: "เกิดข้อผิดพลาด: " + err.message };
   }
 }
 
-/* ──────────────────────────────────────────────
- * Helper – ตอบกลับ JSON สำหรับ REST API
- * ────────────────────────────────────────────── */
-function createJsonResponse_(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/* ──────────────────────────────────────────────
- * Helper – จัดรูปแบบวันที่
- * ────────────────────────────────────────────── */
-function formatDate_(val) {
-  if (!val) return '';
-  if (val instanceof Date) {
-    return Utilities.formatDate(val, 'Asia/Bangkok', 'dd/MM/yyyy');
+function adminDeleteEquipment(rowIndex) {
+  try {
+    var sh = sheet_(SH_CATALOG);
+    sh.deleteRow(rowIndex);
+    return { success: true, message: "ลบอุปกรณ์สำเร็จ" };
+  } catch (err) {
+    return { success: false, message: "เกิดข้อผิดพลาด: " + err.message };
   }
-  return val.toString();
-}
-
-/* ──────────────────────────────────────────────
- * Helper – แปลง Drive URL ให้โหลดรูปได้จริง (single URL)
- * ────────────────────────────────────────────── */
-function convertDriveUrl_(url) {
-  if (!url) return '';
-  url = url.toString().trim();
-
-  if (url.indexOf('lh3.googleusercontent.com') !== -1) return url;
-
-  var fileId = '';
-  var match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (match1) { fileId = match1[1]; }
-
-  if (!fileId) {
-    var match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (match2) { fileId = match2[1]; }
-  }
-
-  if (fileId) {
-    return 'https://lh3.googleusercontent.com/d/' + fileId;
-  }
-
-  return url;
-}
-
-/* ──────────────────────────────────────────────
- * Helper – แปลง Drive URLs หลายตัว (คั่นด้วย ,) ให้เป็น Array
- * ────────────────────────────────────────────── */
-function convertDriveUrls_(rawUrls) {
-  if (!rawUrls) return [];
-  var parts = rawUrls.toString().split(',');
-  var result = [];
-  for (var i = 0; i < parts.length; i++) {
-    var url = parts[i].trim();
-    if (url) {
-      var converted = convertDriveUrl_(url);
-      if (converted) result.push(converted);
-    }
-  }
-  return result;
 }
