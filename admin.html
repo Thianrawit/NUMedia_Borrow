@@ -46,9 +46,9 @@
     }
     .eq-card-admin:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.06); }
     .eq-card-admin.border-green { border-color: #10b981; }
-    .eq-card-admin.border-yellow { border-color: #f59e0b; }
+    .eq-card-admin.border-yellow { border-color: #f5be0b; }
     .eq-card-admin.border-red { border-color: #ef4444; }
-    .eq-card-admin.border-maintenance { border-color: #f43f5e; background-color: #fff9f9; }
+    .eq-card-admin.border-blue { border-color: #2f84fc; background-color: #fff9f9; }
     .eq-card-admin.is-selected { border-color: #f97316 !important; background-color: #fffaf5; box-shadow: 0 0 0 2px rgba(249,115,22,.35); }
 
     .spinner { border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; width:20px; height:20px; animation: spin .7s linear infinite; }
@@ -281,7 +281,7 @@
 
       <div class="mb-4">
         <h2 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">จัดการคลังอุปกรณ์</h2>
-        <p class="text-xs text-gray-500 mt-0.5">ขอบสีระบุสถานะ: <span style="color: green;">เขียว</span> = กำลังยืม, <span style="color: #ff960c;">เหลือง</span>=ถึงกำหนด, <span style="color: red;">แดง</span>=เลยกำหนด, <span style="color: #e11d48;">ชมพู/แดง</span>=ส่งซ่อม/ชำรุด</p>
+        <p class="text-xs text-gray-500 mt-0.5">ขอบสีระบุสถานะ: <span style="color: green;">เขียว</span> = กำลังยืม, <span style="color: #ff960c;">เหลือง</span>=ถึงกำหนด, <span style="color: red;">แดง</span>=เลยกำหนด, <span style="color: #1d5ee1;">น้ำเงิน</span>=ส่งซ่อม/ชำรุด</p>
       </div>
 
       <!-- Filter & Sort Toolbar -->
@@ -800,7 +800,7 @@
         else if (st === 'ถึงกำหนดคืน') borderClass = 'border-yellow';
         else borderClass = 'border-green';
       } else if (isMaint) {
-        borderClass = 'border-maintenance';
+        borderClass = 'border-blue';
       }
 
       var imgHtml = item.imageUrl
