@@ -107,6 +107,10 @@ function doPost(e) {
       );
     } else if (action === "adminDeleteEquipment") {
       result = adminDeleteEquipment(payload.rowIndex);
+    } else if (action === "adminEditEquipment") {
+      result = adminEditEquipment(payload);
+    } else if (action === "adminDeleteMultiple") {
+      result = adminDeleteMultipleEquipment(payload.rowIndexes);
     } else if (action === "adminGetDashboard") {
       result = {
         success: true,
@@ -778,6 +782,77 @@ function adminDeleteEquipment(rowIndex) {
     var sh = sheet_(SH_CATALOG);
     sh.deleteRow(rowIndex);
     return { success: true, message: "ลบอุปกรณ์สำเร็จ" };
+  } catch (err) {
+    return { success: false, message: "เกิดข้อผิดพลาด: " + err.message };
+  }
+}
+
+function adminEditEquipment(payload) {
+  try {
+    var sh = sheet_(SH_CATALOG);
+    var rowIndex = parseInt(payload.rowIndex, 10); // 1-based row in sheet
+    if (!rowIndex || rowIndex < 2) {
+      return { success: false, message: "ไม่พบแถวที่ต้องการแก้ไข" };
+    }
+
+    // อัปเดตรหัสอุปกรณ์ (Col A)
+    if (payload.newId !== undefined && payload.newId !== null) {
+      sh.getRange(rowIndex, 1).setValue(payload.newId.toString().trim());
+    }
+    // อัปเดตชื่ออุปกรณ์ (Col B)
+    if (payload.newName !== undefined && payload.newName !== null) {
+      sh.getRange(rowIndex, 2).setValue(payload.newName.toString().trim());
+    }
+    // อัปเดตสถานะ (Col E)
+    if (payload.newStatus !== undefined && payload.newStatus !== null) {
+      sh.getRange(rowIndex, 5).setValue(payload.newStatus.toString().trim());
+    }
+    // อัปเดตหมวดหมู่ (Col F)
+    if (payload.newCategory !== undefined && payload.newCategory !== null) {
+      sh.getRange(rowIndex, 6).setValue(payload.newCategory.toString().trim());
+    }
+    // อัปเดตรูปภาพ (Col C)
+    if (payload.removeImage === true) {
+      sh.getRange(rowIndex, 3).setValue("");
+    } else if (payload.imageBase64 && payload.imageBase64.length > 0) {
+      var imgUrl = uploadImage_(
+        payload.imageBase64,
+        payload.imageMime || "image/jpeg",
+        "catalog"
+      );
+      if (imgUrl) {
+        sh.getRange(rowIndex, 3).setValue(imgUrl);
+      }
+    }
+
+    return { success: true, message: "แก้ไขอุปกรณ์สำเร็จ" };
+  } catch (err) {
+    return { success: false, message: "เกิดข้อผิดพลาด: " + err.message };
+  }
+}
+
+function adminDeleteMultipleEquipment(rowIndexes) {
+  try {
+    if (!rowIndexes || !Array.isArray(rowIndexes) || rowIndexes.length === 0) {
+      return { success: false, message: "ไม่มีรายการที่เลือก" };
+    }
+    var sh = sheet_(SH_CATALOG);
+    // Deduplicate and filter valid rows (>= 2)
+    var rowSet = {};
+    rowIndexes.forEach(function(r) {
+      var n = parseInt(r, 10);
+      if (!isNaN(n) && n >= 2) rowSet[n] = true;
+    });
+    var sorted = Object.keys(rowSet).map(Number).sort(function(a, b) { return b - a; });
+    
+    if (sorted.length === 0) {
+      return { success: false, message: "ไม่พบแถวที่สามารถลบได้" };
+    }
+
+    for (var i = 0; i < sorted.length; i++) {
+      sh.deleteRow(sorted[i]);
+    }
+    return { success: true, message: "ลบอุปกรณ์สำเร็จ " + sorted.length + " รายการ" };
   } catch (err) {
     return { success: false, message: "เกิดข้อผิดพลาด: " + err.message };
   }

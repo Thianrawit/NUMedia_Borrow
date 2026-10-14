@@ -51,19 +51,26 @@ function checkAndSendReminders() {
 
   // 1. ตรวจสอบแท็บ "ยืมอุปกรณ์" (V1 ดั้งเดิม)
   if (s1) {
-    const res1 = processBorrowSheet_(s1, returnData, today, todayStr, usedReturnIndexes, {
-      version: "V1",
-      emailColIdx: 1,      // Col B (idx 1): อีเมล
-      nameColIdx: 3,       // Col D (idx 3): ชื่อ-นามสกุล
-      nickColIdx: 4,       // Col E (idx 4): ชื่อเล่น
-      sidColIdx: 5,        // Col F (idx 5): รหัสนิสิต
-      itemsColIdx: 8,      // Col I (idx 8): รายการอุปกรณ์
-      borrowDateColIdx: 9, // Col J (idx 9): วันที่ยืม
-      imgColIdx: 10,       // Col K (idx 10): ลิงก์รูปภาพ
-      dueDateColIdx: 13,   // Col N (idx 13): กำหนดคืน
-      statusCol: 15,       // Col O (Col 15): สถานะ
-      lastAlertCol: 16     // Col P (Col 16): แจ้งเตือนล่าสุด
-    });
+    const res1 = processBorrowSheet_(
+      s1,
+      returnData,
+      today,
+      todayStr,
+      usedReturnIndexes,
+      {
+        version: "V1",
+        emailColIdx: 1, // Col B (idx 1): อีเมล
+        nameColIdx: 3, // Col D (idx 3): ชื่อ-นามสกุล
+        nickColIdx: 4, // Col E (idx 4): ชื่อเล่น
+        sidColIdx: 5, // Col F (idx 5): รหัสนิสิต
+        itemsColIdx: 8, // Col I (idx 8): รายการอุปกรณ์
+        borrowDateColIdx: 9, // Col J (idx 9): วันที่ยืม
+        imgColIdx: 10, // Col K (idx 10): ลิงก์รูปภาพ
+        dueDateColIdx: 13, // Col N (idx 13): กำหนดคืน
+        statusCol: 15, // Col O (Col 15): สถานะ
+        lastAlertCol: 16, // Col P (Col 16): แจ้งเตือนล่าสุด
+      },
+    );
     totalChecked += res1.checked;
     totalReturned += res1.returned;
     totalAlerted += res1.alerted;
@@ -73,19 +80,26 @@ function checkAndSendReminders() {
 
   // 2. ตรวจสอบแท็บ "ยืมอุปกรณ์_v2" (V2 ระบบปัจจุบัน)
   if (s2) {
-    const res2 = processBorrowSheet_(s2, returnData, today, todayStr, usedReturnIndexes, {
-      version: "V2",
-      emailColIdx: 1,      // Col B (idx 1): อีเมล
-      nameColIdx: 3,       // Col D (idx 3): ชื่อ-นามสกุล
-      nickColIdx: 4,       // Col E (idx 4): ชื่อเล่น
-      sidColIdx: 5,        // Col F (idx 5): รหัสนิสิต
-      itemsColIdx: 8,      // Col I (idx 8): รายการอุปกรณ์
-      borrowDateColIdx: 9, // Col J (idx 9): วันที่ยืม
-      imgColIdx: 10,       // Col K (idx 10): ลิงก์รูปภาพ
-      dueDateColIdx: 15,   // Col P (idx 15): กำหนดคืน
-      statusCol: 17,       // Col Q (Col 17): สถานะ
-      lastAlertCol: 18     // Col R (Col 18): แจ้งเตือนล่าสุด
-    });
+    const res2 = processBorrowSheet_(
+      s2,
+      returnData,
+      today,
+      todayStr,
+      usedReturnIndexes,
+      {
+        version: "V2",
+        emailColIdx: 1, // Col B (idx 1): อีเมล
+        nameColIdx: 3, // Col D (idx 3): ชื่อ-นามสกุล
+        nickColIdx: 4, // Col E (idx 4): ชื่อเล่น
+        sidColIdx: 5, // Col F (idx 5): รหัสนิสิต
+        itemsColIdx: 8, // Col I (idx 8): รายการอุปกรณ์
+        borrowDateColIdx: 9, // Col J (idx 9): วันที่ยืม
+        imgColIdx: 10, // Col K (idx 10): ลิงก์รูปภาพ
+        dueDateColIdx: 15, // Col P (idx 15): กำหนดคืน
+        statusCol: 17, // Col Q (Col 17): สถานะ
+        lastAlertCol: 18, // Col R (Col 18): แจ้งเตือนล่าสุด
+      },
+    );
     totalChecked += res2.checked;
     totalReturned += res2.returned;
     totalAlerted += res2.alerted;
@@ -93,20 +107,29 @@ function checkAndSendReminders() {
     Logger.log("⚠️ ไม่พบแท็บ '" + SH_BORROW_V2 + "'");
   }
 
-  Logger.log(`✅ ตรวจสอบสมบูรณ์: ตรวจสอบ ${totalChecked} รายการ, คืนแล้ว ${totalReturned} รายการ, แจ้งเตือน ${totalAlerted} รายการ`);
+  Logger.log(
+    `✅ ตรวจสอบสมบูรณ์: ตรวจสอบ ${totalChecked} รายการ, คืนแล้ว ${totalReturned} รายการ, แจ้งเตือน ${totalAlerted} รายการ`,
+  );
   return {
     success: true,
     message: `ตรวจสอบ ${totalChecked} รายการ, คืนแล้ว ${totalReturned} รายการ, ส่งแจ้งเตือน ${totalAlerted} รายการ`,
     totalChecked: totalChecked,
     totalReturned: totalReturned,
-    totalAlerted: totalAlerted
+    totalAlerted: totalAlerted,
   };
 }
 
 /**
  * ประมวลผลรายการยืมในแต่ละ Sheet
  */
-function processBorrowSheet_(sheet, returnData, today, todayStr, usedReturnIndexes, config) {
+function processBorrowSheet_(
+  sheet,
+  returnData,
+  today,
+  todayStr,
+  usedReturnIndexes,
+  config,
+) {
   const data = sheet.getDataRange().getValues();
   const timeZone = Session.getScriptTimeZone() || "Asia/Bangkok";
   let checked = 0;
@@ -140,19 +163,21 @@ function processBorrowSheet_(sheet, returnData, today, todayStr, usedReturnIndex
 
       const retRow = returnData[r];
       const retStudentId = String(retRow[4] || "").trim(); // Col E: รหัสนิสิต
-      const retItems = String(retRow[7] || "").trim();     // Col H: รายการอุปกรณ์ที่คืน
-      const retBorrowDateRaw = retRow[8];                  // Col I: วันที่ยืม
+      const retItems = String(retRow[7] || "").trim(); // Col H: รายการอุปกรณ์ที่คืน
+      const retBorrowDateRaw = retRow[8]; // Col I: วันที่ยืม
 
       const cleanRetId = cleanStudentId(retStudentId);
       const retBorrowDateFormatted = formatDate(retBorrowDateRaw);
 
       // เงื่อนไข 1: รหัสนิสิตต้องตรงกัน
-      const isIdMatch = cleanBorrowId && cleanRetId && cleanBorrowId === cleanRetId;
+      const isIdMatch =
+        cleanBorrowId && cleanRetId && cleanBorrowId === cleanRetId;
 
       // เงื่อนไข 2: วันที่ยืมต้องตรงกัน (ตัดเวลาออก เทียบแค่วัน/เดือน/ปี)
-      const isDateMatch = borrowDateFormatted && retBorrowDateFormatted
-        ? borrowDateFormatted === retBorrowDateFormatted
-        : true;
+      const isDateMatch =
+        borrowDateFormatted && retBorrowDateFormatted
+          ? borrowDateFormatted === retBorrowDateFormatted
+          : true;
 
       // เงื่อนไข 3: เช็ครายการอุปกรณ์ที่มีความคล้ายกัน (Fuzzy Bigram)
       const isItemMatch = compareItemList(items, retItems);
@@ -176,9 +201,14 @@ function processBorrowSheet_(sheet, returnData, today, todayStr, usedReturnIndex
           const catSheet = ss.getSheetByName(SH_CATALOG);
           if (catSheet && items) {
             const catData = catSheet.getDataRange().getValues();
-            const returnedList = items.split(/[\n,]/).map(function(s){ return s.trim().toLowerCase(); });
+            const returnedList = items.split(/[\n,]/).map(function (s) {
+              return s.trim().toLowerCase();
+            });
             for (let c = 1; c < catData.length; c++) {
-              const eqName = (catData[c][1] || "").toString().trim().toLowerCase();
+              const eqName = (catData[c][1] || "")
+                .toString()
+                .trim()
+                .toLowerCase();
               if (returnedList.indexOf(eqName) !== -1) {
                 catSheet.getRange(c + 1, 5).setValue("พร้อมใช้งาน");
               }
@@ -226,7 +256,7 @@ function processBorrowSheet_(sheet, returnData, today, todayStr, usedReturnIndex
             items,
             dueDate,
             isOverdue,
-            imageBlob
+            imageBlob,
           );
 
           sheet.getRange(i + 1, config.lastAlertCol).setValue(new Date());
@@ -247,7 +277,10 @@ function setupDaily8AmTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
   for (let i = 0; i < triggers.length; i++) {
     const fn = triggers[i].getHandlerFunction();
-    if (fn === "checkAndSendReminders" || fn === "checkAndNotifyDailyBorrowStatus") {
+    if (
+      fn === "checkAndSendReminders" ||
+      fn === "checkAndNotifyDailyBorrowStatus"
+    ) {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
@@ -260,7 +293,10 @@ function setupDaily8AmTrigger() {
     .create();
 
   Logger.log("✅ ตั้ง Trigger เช็คสถานะ 8:00 น. เรียบร้อยแล้ว!");
-  return { success: true, message: "ตั้ง Trigger เช็คสถานะ 8:00 น. เรียบร้อยแล้ว" };
+  return {
+    success: true,
+    message: "ตั้ง Trigger เช็คสถานะ 8:00 น. เรียบร้อยแล้ว",
+  };
 }
 
 // ----------------------------------------------------
@@ -277,7 +313,7 @@ function compareItemList(borrowItemsText, returnItemsText) {
           .replace(/^[-*•\s\d]+/, "")
           .replace(/[\s\-_.,/\\()]/g, "")
           .toLowerCase()
-          .trim()
+          .trim(),
       )
       .filter((line) => line.length > 1);
 
@@ -289,7 +325,8 @@ function compareItemList(borrowItemsText, returnItemsText) {
   let matchCount = 0;
   for (let bLine of borrowLines) {
     const isMatched = returnLines.some((rLine) => {
-      if (bLine === rLine || bLine.includes(rLine) || rLine.includes(bLine)) return true;
+      if (bLine === rLine || bLine.includes(rLine) || rLine.includes(bLine))
+        return true;
       return getSimilarityScore(bLine, rLine) >= 0.4;
     });
     if (isMatched) matchCount++;
@@ -327,7 +364,11 @@ function formatDate(dateVal) {
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return String(dateVal).split(" ")[0].trim();
-    return Utilities.formatDate(d, Session.getScriptTimeZone() || "Asia/Bangkok", "yyyy-MM-dd");
+    return Utilities.formatDate(
+      d,
+      Session.getScriptTimeZone() || "Asia/Bangkok",
+      "yyyy-MM-dd",
+    );
   } catch (e) {
     return String(dateVal).trim();
   }
@@ -364,7 +405,7 @@ function sendEmailReminder(
   items,
   dueDate,
   isOverdue,
-  imageBlob
+  imageBlob,
 ) {
   const dueDateFormatted = Utilities.formatDate(dueDate, "GMT+7", "dd/MM/yyyy");
   const displayName = nickname ? `${name} (${nickname})` : name;

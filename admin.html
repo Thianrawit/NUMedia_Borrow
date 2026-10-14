@@ -40,6 +40,7 @@
     .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
 
     .eq-card-admin {
+      position: relative;
       background: #fff; border: 2px solid #e5e7eb; border-radius: 1.25rem;
       overflow: hidden; transition: all .15s ease; cursor: pointer;
     }
@@ -47,6 +48,7 @@
     .eq-card-admin.border-green { border-color: #10b981; }
     .eq-card-admin.border-yellow { border-color: #f59e0b; }
     .eq-card-admin.border-red { border-color: #ef4444; }
+    .eq-card-admin.is-selected { border-color: #f97316 !important; background-color: #fffaf5; box-shadow: 0 0 0 2px rgba(249,115,22,.35); }
 
     .spinner { border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; width:20px; height:20px; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -278,18 +280,18 @@
 
       <div class="mb-4">
         <h2 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">จัดการคลังอุปกรณ์</h2>
-        <p class="text-xs text-gray-500 mt-0.5">ขอบสีระบุสถานะ: เขียว=กำลังยืม, ส้ม=ถึงกำหนด, แดง=เลยกำหนด</p>
+        <p class="text-xs text-gray-500 mt-0.5">ขอบสีระบุสถานะ: <span style="color: green;">เขียว</span> = กำลังยืม, <span style="color: #ff960c;">เหลือง</span>=ถึงกำหนด, <span style="color: red;">แดง</span>=เลยกำหนด</p>
       </div>
 
-      <!-- Filter Toolbar -->
-      <div class="bg-white border border-gray-200 rounded-2xl p-3 mb-6 shadow-sm flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+      <!-- Filter & Sort Toolbar -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-3 mb-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
         <div class="relative flex-1">
           <input id="adminSearchInput" type="text" placeholder="ค้นหาชื่อ หรือ รหัสอุปกรณ์..." oninput="applyAdminFilters()" class="input-field w-full pl-9 pr-3 py-2 text-xs rounded-xl" />
           <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
-        <div class="flex items-center gap-2">
-          <select id="filterCategory" onchange="applyAdminFilters()" class="input-field text-xs font-bold py-2 px-3 rounded-xl bg-white cursor-pointer flex-1 md:flex-initial">
-            <option value="ALL">ทุกประเภท</option>
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="filterCategory" onchange="applyAdminFilters()" class="input-field text-xs font-bold py-2 px-3 rounded-xl bg-white cursor-pointer flex-1 sm:flex-initial">
+            <option value="ALL">ทุกหมวดหมู่</option>
             <option value="ไมค์">ไมค์ (MIC)</option>
             <option value="ขาตั้ง">ขาตั้ง (POD)</option>
             <option value="ไฟ">ไฟ (LAM)</option>
@@ -298,13 +300,51 @@
             <option value="กล้อง">กล้อง (CAM)</option>
             <option value="อื่นๆ">อื่นๆ (NUM)</option>
           </select>
-          <select id="filterStatus" onchange="applyAdminFilters()" class="input-field text-xs font-bold py-2 px-3 rounded-xl bg-white cursor-pointer flex-1 md:flex-initial">
+          <select id="filterStatus" onchange="applyAdminFilters()" class="input-field text-xs font-bold py-2 px-3 rounded-xl bg-white cursor-pointer flex-1 sm:flex-initial">
             <option value="ALL">ทุกสถานะ</option>
-            <option value="AVAILABLE">ไม่มีการยืม (ว่าง)</option>
+            <option value="AVAILABLE">ว่าง (พร้อมใช้งาน)</option>
             <option value="BORROWED">กำลังยืม</option>
             <option value="DUE_TODAY">ถึงกำหนดคืน</option>
             <option value="OVERDUE">เลยกำหนดคืน</option>
           </select>
+          <div class="flex items-center gap-1.5 flex-1 sm:flex-initial">
+            <span class="text-xs font-bold text-gray-400 whitespace-nowrap hidden sm:inline">จัดเรียง:</span>
+            <select id="adminSortBy" onchange="applyAdminFilters()" class="input-field text-xs font-bold py-2 px-3 rounded-xl bg-white cursor-pointer w-full sm:w-auto text-[#ea580c]">
+              <option value="DEFAULT">ลำดับเดิมในคลัง</option>
+              <option value="STATUS">สถานะ (เลยกำหนด → ถึงกำหนด → ยืม)</option>
+              <option value="ID_ASC">รหัส (น้อย → มาก A-Z)</option>
+              <option value="ID_DESC">รหัส (มาก → น้อย Z-A)</option>
+              <option value="NAME_ASC">ชื่ออุปกรณ์ (ก-ฮ / A-Z)</option>
+              <option value="NAME_DESC">ชื่ออุปกรณ์ (ฮ-ก / Z-A)</option>
+              <option value="DATE_DESC">วันที่เพิ่ม (ใหม่ล่าสุดก่อน)</option>
+              <option value="DATE_ASC">วันที่เพิ่ม (เก่าสุดก่อน)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Batch Selection Toolbar (สำหรับเลือกลบหลายรายการ) -->
+      <div id="batchActionBar" class="bg-gray-50 border border-gray-200 rounded-2xl p-3 mb-6 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div class="flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-gray-700">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="w-4 h-4 rounded text-[#f97316] accent-[#f97316] focus:ring-orange-500 cursor-pointer" />
+            <span>เลือกทั้งหมด (<span id="visibleItemsCount">0</span>)</span>
+          </label>
+          <span class="text-gray-300">|</span>
+          <span class="text-xs font-semibold text-gray-600">
+            เลือกแล้ว <span id="selectedCountBadge" class="font-bold text-[#ea580c] text-sm">0</span> รายการ
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="cancelSelectBtn" type="button" onclick="clearSelection()" class="text-xs font-bold text-gray-500 hover:text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-xl transition-all cursor-pointer hidden">
+            ยกเลิกการเลือก
+          </button>
+          <button id="batchDeleteBtn" type="button" onclick="handleBatchDelete()" disabled class="text-xs font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed border-none px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>ลบที่เลือก (<span id="deleteCountText">0</span>)</span>
+          </button>
         </div>
       </div>
 
@@ -398,9 +438,115 @@
     <div class="modal-content p-6 sm:p-8 fade-up" id="eqDetailBody"></div>
   </div>
 
+  <!-- ═══ MODAL: EDIT EQUIPMENT ═══ -->
+  <div id="editModal" class="hidden modal-overlay" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal-content p-6 sm:p-8 fade-up">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h3 class="text-xl font-bold text-gray-900">แก้ไขข้อมูลอุปกรณ์</h3>
+          <p class="text-xs text-gray-400 mt-0.5">แก้ไขชื่อ รหัส รูปภาพ และสถานะ</p>
+        </div>
+        <button onclick="closeEditModal()" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer border-none">
+          <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <!-- หมวดหมู่ -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">หมวดหมู่อุปกรณ์ <span class="text-red-500">*</span></label>
+          <select id="editItemCategory" onchange="onEditCategoryChange()" class="input-field w-full px-4 py-3 rounded-xl text-sm font-bold text-gray-800 bg-white cursor-pointer">
+            <option value="ไมค์">ไมค์ (MIC)</option>
+            <option value="ขาตั้ง">ขาตั้ง (POD)</option>
+            <option value="ไฟ">ไฟ (LAM)</option>
+            <option value="เลนส์">เลนส์ (LEN)</option>
+            <option value="กริมบอล">กริมบอล (GIM)</option>
+            <option value="กล้อง">กล้อง (CAM)</option>
+            <option value="อื่นๆ">อื่นๆ (NUM)</option>
+          </select>
+        </div>
+
+        <!-- รหัสอุปกรณ์ -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1 flex items-center justify-between">
+            <span>รหัสอุปกรณ์ <span class="text-red-500">*</span></span>
+            <span class="text-[11px] font-bold text-[#ea580c] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">แก้ไขรหัสได้</span>
+          </label>
+          <input id="editItemId" type="text" placeholder="เช่น CAM-001" class="input-field w-full px-4 py-3 rounded-xl text-sm font-bold text-gray-900" />
+        </div>
+
+        <!-- ชื่ออุปกรณ์ -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">ชื่ออุปกรณ์ <span class="text-red-500">*</span></label>
+          <input id="editItemName" type="text" placeholder="เช่น Sony A7 IV" class="input-field w-full px-4 py-3 rounded-xl text-sm font-medium" />
+        </div>
+
+        <!-- สถานะอุปกรณ์ -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">สถานะในคลัง</label>
+          <select id="editItemStatus" class="input-field w-full px-4 py-3 rounded-xl text-sm font-semibold text-gray-800 bg-white cursor-pointer">
+            <option value="พร้อมใช้งาน">พร้อมใช้งาน (ว่าง)</option>
+            <option value="ถูกยืม">ถูกยืม</option>
+            <option value="ส่งซ่อม/ชำรุด">ส่งซ่อม/ชำรุด</option>
+          </select>
+        </div>
+
+        <!-- รูปภาพอุปกรณ์ -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">รูปภาพอุปกรณ์</label>
+          
+          <!-- Current Preview Wrap -->
+          <div id="editPreviewWrap" class="mb-3 text-center">
+            <div class="relative inline-block">
+              <img id="editPreviewImg" class="max-h-40 mx-auto rounded-xl object-contain shadow-sm border border-gray-200 bg-gray-50" />
+            </div>
+            <div class="flex items-center justify-center gap-3 mt-2">
+              <button type="button" onclick="document.getElementById('editImageInput').click()" class="text-xs font-bold text-[#ea580c] hover:underline cursor-pointer border-none bg-transparent">
+                📷 เปลี่ยนรูปใหม่
+              </button>
+              <span class="text-gray-300">|</span>
+              <button type="button" onclick="handleRemoveEditImage()" class="text-xs font-bold text-red-500 hover:underline cursor-pointer border-none bg-transparent">
+                🗑️ ลบรูปภาพ
+              </button>
+            </div>
+          </div>
+
+          <!-- DropZone for new photo -->
+          <div id="editDropZone" class="hidden border-2 border-dashed border-gray-300 hover:border-[#f97316] bg-gray-50 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group">
+            <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-[#ea580c] group-hover:scale-110 transition-transform">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold text-gray-700">ลากรูปภาพใหม่มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
+              <p class="text-xs text-gray-400 mt-0.5">รองรับ JPG, PNG (จะถูกบีบอัดอัตโนมัติ)</p>
+            </div>
+          </div>
+          <input id="editImageInput" type="file" accept="image/*" class="hidden" onchange="previewEditImage(this)" />
+        </div>
+
+        <div class="flex items-center gap-3 pt-3">
+          <button type="button" onclick="closeEditModal()" class="w-full py-3 rounded-xl text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold text-sm transition-all cursor-pointer border-none">
+            ยกเลิก
+          </button>
+          <button id="editSubmitBtn" onclick="handleSaveEdit()" class="btn-primary w-full py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md border-none">
+            <span id="editSubmitText">บันทึกการแก้ไข</span>
+            <div id="editSubmitSpinner" class="spinner hidden"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <script>
   var adminUser = null;
   var adminCatalog = [];
+  var currentFilteredItems = [];
+  var selectedRowIndexes = new Set();
+  var currentEditItem = null;
+  var editOriginalId = '', editOriginalCategory = '';
+  var editBase64 = '', editMime = '', editRemoveImage = false;
   var addBase64 = '', addMime = '';
 
   var CATEGORY_PREFIX_MAP = {
@@ -411,6 +557,16 @@
     'กริมบอล': 'GIM',
     'กล้อง': 'CAM',
     'อื่นๆ': 'NUM'
+  };
+
+  var PREFIX_TO_CATEGORY_MAP = {
+    'MIC': 'ไมค์',
+    'POD': 'ขาตั้ง',
+    'LAM': 'ไฟ',
+    'LEN': 'เลนส์',
+    'GIM': 'กริมบอล',
+    'CAM': 'กล้อง',
+    'NUM': 'อื่นๆ'
   };
 
   function navigateTo(page) {
@@ -548,7 +704,6 @@
       // 2. Category Filter
       if (cat !== 'ALL') {
         var itemCat = (item.category || '').trim();
-        // check either category field or id prefix
         var pfx = CATEGORY_PREFIX_MAP[cat] || '';
         var matchCat = (itemCat === cat) || (pfx && (item.id || '').toUpperCase().startsWith(pfx));
         if (!matchCat) return false;
@@ -566,7 +721,52 @@
       return true;
     });
 
+    // 4. Sort
+    var sortBy = document.getElementById('adminSortBy') ? document.getElementById('adminSortBy').value : 'DEFAULT';
+    if (sortBy === 'ID_ASC') {
+      filtered.sort(function(a, b) {
+        return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+    } else if (sortBy === 'ID_DESC') {
+      filtered.sort(function(a, b) {
+        return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+    } else if (sortBy === 'NAME_ASC') {
+      filtered.sort(function(a, b) {
+        return (a.name || '').localeCompare(b.name || '', 'th');
+      });
+    } else if (sortBy === 'NAME_DESC') {
+      filtered.sort(function(a, b) {
+        return (b.name || '').localeCompare(a.name || '', 'th');
+      });
+    } else if (sortBy === 'STATUS') {
+      function getStatusWeight(item) {
+        if (item.borrower) {
+          if (item.borrower.status === 'เลยกำหนดคืน') return 4;
+          if (item.borrower.status === 'ถึงกำหนดคืน') return 3;
+          return 2; // กำลังยืม
+        }
+        var s = (item.status || '').trim();
+        if (s === 'ถูกยืม') return 2;
+        if (s.includes('ซ่อม') || s.includes('ชำรุด')) return 1;
+        return 0; // พร้อมใช้งาน
+      }
+      filtered.sort(function(a, b) {
+        return getStatusWeight(b) - getStatusWeight(a);
+      });
+    } else if (sortBy === 'DATE_DESC') {
+      filtered.sort(function(a, b) {
+        return (b.dateAdded || '').localeCompare(a.dateAdded || '');
+      });
+    } else if (sortBy === 'DATE_ASC') {
+      filtered.sort(function(a, b) {
+        return (a.dateAdded || '').localeCompare(b.dateAdded || '');
+      });
+    }
+
+    currentFilteredItems = filtered;
     renderAdminEquipment(filtered);
+    updateBatchActionBar();
   }
 
   function renderAdminEquipment(items) {
@@ -584,6 +784,7 @@
 
     grid.innerHTML = items.map(function(item) {
       var realIdx = adminCatalog.indexOf(item);
+      var isSelected = selectedRowIndexes.has(item.rowIndex);
       var borderClass = '';
       if (item.borrower) {
         var st = item.borrower.status;
@@ -596,7 +797,17 @@
         ? '<img src="' + escHtml(item.imageUrl) + '" alt="' + escHtml(item.name) + '" class="w-full h-28 object-cover" onerror="this.style.display=\'none\'" />'
         : '<div class="w-full h-28 bg-gray-100 flex items-center justify-center"><svg class="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
 
-      return '<div class="eq-card-admin fade-up ' + borderClass + '" onclick="showEqDetail(' + realIdx + ')">' +
+      return '<div class="eq-card-admin fade-up ' + borderClass + (isSelected ? ' is-selected' : '') + '" onclick="showEqDetail(' + realIdx + ')">' +
+        // Checkbox at top-left
+        '<div class="absolute top-2 left-2 z-10" onclick="event.stopPropagation()">' +
+          '<input type="checkbox" ' + (isSelected ? 'checked' : '') + ' onchange="toggleItemSelect(' + item.rowIndex + ', this.checked)" class="w-5 h-5 rounded-md accent-[#f97316] cursor-pointer shadow-sm bg-white/90 border border-gray-300" title="เลือกเพื่อลบ" />' +
+        '</div>' +
+        // Quick Action icons at top-right
+        '<div class="absolute top-2 right-2 z-10 flex items-center gap-1" onclick="event.stopPropagation()">' +
+          '<button type="button" onclick="handleDeleteSingle(' + realIdx + ')" title="ลบอุปกรณ์นี้" class="w-7 h-7 rounded-lg bg-white/95 hover:bg-red-50 text-gray-400 hover:text-red-500 shadow-xs border border-gray-200/80 flex items-center justify-center transition-all cursor-pointer">' +
+            '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+          '</button>' +
+        '</div>' +
         imgHtml +
         '<div class="p-3">' +
           '<p class="text-xs font-bold text-gray-800 truncate" title="' + escHtml(item.name) + '">' + escHtml(item.name) + '</p>' +
@@ -608,12 +819,395 @@
             ? '<p class="text-[10px] font-semibold mt-1 ' + (item.borrower.status === 'เลยกำหนดคืน' ? 'text-red-500' : item.borrower.status === 'ถึงกำหนดคืน' ? 'text-amber-600' : 'text-emerald-600') + '">' + escHtml(item.borrower.nickname) + ' ยืมอยู่</p>'
             : '<p class="text-[10px] text-gray-400 mt-1">ว่าง</p>'
           ) +
-          '<button type="button" onclick="event.stopPropagation(); showEqDetail(' + realIdx + ')" class="w-full mt-2 py-1.5 px-2 bg-orange-50 hover:bg-orange-100 text-[#ea580c] text-[11px] font-bold rounded-lg transition-colors border border-orange-200 flex items-center justify-center gap-1 cursor-pointer">' +
-            '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
-            'ดูข้อมูลเต็ม' +
-          '</button>' +
+          '<div class="grid grid-cols-2 gap-1.5 mt-2" onclick="event.stopPropagation()">' +
+            '<button type="button" onclick="showEqDetail(' + realIdx + ')" class="py-1 px-1.5 bg-orange-50 hover:bg-orange-100 text-[#ea580c] text-[10px] font-bold rounded-lg transition-colors border border-orange-200 flex items-center justify-center gap-1 cursor-pointer">' +
+              '<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+              'ดูข้อมูล' +
+            '</button>' +
+            '<button type="button" onclick="openEditModal(' + realIdx + ')" class="py-1 px-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-[10px] font-bold rounded-lg transition-colors border border-gray-200 flex items-center justify-center gap-1 cursor-pointer">' +
+              '<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>' +
+              'แก้ไข' +
+            '</button>' +
+          '</div>' +
         '</div></div>';
     }).join('');
+  }
+
+  /* ═══ BATCH SELECTION & DELETE FUNCTIONS ═══ */
+  function toggleItemSelect(rowIndex, isChecked) {
+    if (isChecked) {
+      selectedRowIndexes.add(rowIndex);
+    } else {
+      selectedRowIndexes.delete(rowIndex);
+    }
+    updateBatchActionBar();
+    renderAdminEquipment(currentFilteredItems);
+  }
+
+  function toggleSelectAll(isChecked) {
+    if (isChecked) {
+      currentFilteredItems.forEach(function(item) {
+        if (item.rowIndex) selectedRowIndexes.add(item.rowIndex);
+      });
+    } else {
+      currentFilteredItems.forEach(function(item) {
+        if (item.rowIndex) selectedRowIndexes.delete(item.rowIndex);
+      });
+    }
+    updateBatchActionBar();
+    renderAdminEquipment(currentFilteredItems);
+  }
+
+  function clearSelection() {
+    selectedRowIndexes.clear();
+    updateBatchActionBar();
+    renderAdminEquipment(currentFilteredItems);
+  }
+
+  function updateBatchActionBar() {
+    var count = selectedRowIndexes.size;
+    var totalVisible = currentFilteredItems.length;
+
+    var badge = document.getElementById('selectedCountBadge');
+    if (badge) badge.textContent = count;
+
+    var delText = document.getElementById('deleteCountText');
+    if (delText) delText.textContent = count;
+
+    var visibleCountEl = document.getElementById('visibleItemsCount');
+    if (visibleCountEl) visibleCountEl.textContent = totalVisible;
+
+    var batchBtn = document.getElementById('batchDeleteBtn');
+    if (batchBtn) batchBtn.disabled = (count === 0);
+
+    var cancelBtn = document.getElementById('cancelSelectBtn');
+    if (cancelBtn) cancelBtn.classList.toggle('hidden', count === 0);
+
+    var selectAllCb = document.getElementById('selectAllCheckbox');
+    if (selectAllCb) {
+      selectAllCb.checked = (totalVisible > 0 && currentFilteredItems.every(function(it) {
+        return selectedRowIndexes.has(it.rowIndex);
+      }));
+    }
+  }
+
+  async function handleBatchDelete() {
+    var count = selectedRowIndexes.size;
+    if (count === 0) return;
+
+    var confirmResult = await Swal.fire({
+      title: 'ยืนยันการลบอุปกรณ์?',
+      html: 'คุณกำลังจะลบอุปกรณ์จำนวน <b>' + count + '</b> รายการ<br><span class="text-xs text-red-500">การกระทำนี้จะลบข้อมูลออกจาก Sheet อย่างถาวร</span>',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'ใช่, ลบ ' + count + ' รายการ',
+      cancelButtonText: 'ยกเลิก',
+      focusCancel: true
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    Swal.fire({
+      title: 'กำลังลบอุปกรณ์...',
+      text: 'กรุณารอสักครู่',
+      allowOutsideClick: false,
+      didOpen: function() { Swal.showLoading(); }
+    });
+
+    try {
+      var rows = Array.from(selectedRowIndexes);
+      var res = await apiPost('adminDeleteMultiple', { rowIndexes: rows });
+      if (res && res.success) {
+        selectedRowIndexes.clear();
+        await Swal.fire({
+          icon: 'success',
+          title: 'ลบสำเร็จ!',
+          text: res.message || ('ลบอุปกรณ์ ' + count + ' รายการเรียบร้อยแล้ว'),
+          confirmButtonColor: '#f97316'
+        });
+        loadAdminEquipment();
+      } else {
+        throw new Error((res && res.message) || 'ลบอุปกรณ์ไม่สำเร็จ');
+      }
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+    }
+  }
+
+  async function handleDeleteSingle(realIdx) {
+    var item = adminCatalog[realIdx];
+    if (!item) return;
+
+    var confirmResult = await Swal.fire({
+      title: 'ลบอุปกรณ์นี้?',
+      html: 'ต้องการลบ <b>' + escHtml(item.name) + '</b> (' + escHtml(item.id) + ') หรือไม่?<br><span class="text-xs text-red-500">ข้อมูลจะถูกลบออกจากฐานข้อมูลอย่างถาวร</span>',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'ใช่, ลบอุปกรณ์นี้',
+      cancelButtonText: 'ยกเลิก',
+      focusCancel: true
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    Swal.fire({
+      title: 'กำลังลบอุปกรณ์...',
+      allowOutsideClick: false,
+      didOpen: function() { Swal.showLoading(); }
+    });
+
+    try {
+      var res = await apiPost('adminDeleteEquipment', { rowIndex: item.rowIndex });
+      if (res && res.success) {
+        selectedRowIndexes.delete(item.rowIndex);
+        closeEqDetailModal();
+        await Swal.fire({
+          icon: 'success',
+          title: 'ลบสำเร็จ!',
+          text: res.message || 'ลบอุปกรณ์เรียบร้อยแล้ว',
+          confirmButtonColor: '#f97316'
+        });
+        loadAdminEquipment();
+      } else {
+        throw new Error((res && res.message) || 'ลบอุปกรณ์ไม่สำเร็จ');
+      }
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+    }
+  }
+
+  /* ═══ EDIT EQUIPMENT LOGIC ═══ */
+  function openEditModal(idx) {
+    var item = adminCatalog[idx];
+    if (!item) return;
+
+    currentEditItem = item;
+    editOriginalId = (item.id || '').trim();
+
+    // Determine the item's original category accurately
+    var origCat = (item.category || '').trim();
+    if (!origCat || !CATEGORY_PREFIX_MAP[origCat]) {
+      var m = editOriginalId.match(/^([a-zA-Z]+)/);
+      if (m) {
+        var pfxUpper = m[1].toUpperCase();
+        origCat = PREFIX_TO_CATEGORY_MAP[pfxUpper] || 'อื่นๆ';
+      } else {
+        origCat = 'อื่นๆ';
+      }
+    }
+    editOriginalCategory = origCat;
+
+    editBase64 = '';
+    editMime = '';
+    editRemoveImage = false;
+
+    // Prefill form
+    document.getElementById('editItemId').value = editOriginalId;
+    document.getElementById('editItemName').value = item.name || '';
+
+    // Category
+    var catSelect = document.getElementById('editItemCategory');
+    if (catSelect) {
+      catSelect.value = editOriginalCategory;
+    }
+
+    // Status
+    var stSelect = document.getElementById('editItemStatus');
+    if (stSelect) {
+      if (item.borrower) {
+        stSelect.value = 'ถูกยืม';
+      } else if (item.status) {
+        stSelect.value = item.status;
+      } else {
+        stSelect.value = 'พร้อมใช้งาน';
+      }
+    }
+
+    // Image preview
+    var previewWrap = document.getElementById('editPreviewWrap');
+    var dropZone = document.getElementById('editDropZone');
+    var previewImg = document.getElementById('editPreviewImg');
+    var fileInput = document.getElementById('editImageInput');
+    if (fileInput) fileInput.value = '';
+
+    if (item.imageUrl) {
+      previewImg.src = item.imageUrl;
+      previewWrap.classList.remove('hidden');
+      dropZone.classList.add('hidden');
+    } else {
+      previewImg.src = '';
+      previewWrap.classList.add('hidden');
+      dropZone.classList.remove('hidden');
+    }
+
+    document.getElementById('editModal').classList.remove('hidden');
+  }
+
+  function onEditCategoryChange() {
+    if (!currentEditItem) return;
+    var selectedCat = document.getElementById('editItemCategory').value;
+    var selectedPrefix = CATEGORY_PREFIX_MAP[selectedCat] || 'NUM';
+    var origPrefix = CATEGORY_PREFIX_MAP[editOriginalCategory] || 'NUM';
+
+    if (selectedCat === editOriginalCategory || selectedPrefix === origPrefix) {
+      // Revert back to original ID of this item
+      document.getElementById('editItemId').value = editOriginalId;
+    } else {
+      // Generate next equipment ID for the selected new category
+      var nextId = calculateNextItemId(selectedCat);
+      document.getElementById('editItemId').value = nextId;
+    }
+  }
+
+  function closeEditModal() {
+    currentEditItem = null;
+    editOriginalId = '';
+    editOriginalCategory = '';
+    editBase64 = '';
+    editMime = '';
+    editRemoveImage = false;
+    document.getElementById('editModal').classList.add('hidden');
+  }
+
+  function handleRemoveEditImage() {
+    editRemoveImage = true;
+    editBase64 = '';
+    editMime = '';
+    var fileInput = document.getElementById('editImageInput');
+    if (fileInput) fileInput.value = '';
+    document.getElementById('editPreviewImg').src = '';
+    document.getElementById('editPreviewWrap').classList.add('hidden');
+    document.getElementById('editDropZone').classList.remove('hidden');
+  }
+
+  function processEditImageFile(file) {
+    if (!file) return;
+    if (!file.type || !file.type.match(/^image\//i)) {
+      Swal.fire({ icon: 'warning', title: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น' });
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var MAX = 1200, w = img.width, h = img.height;
+        if (w > MAX) { h = h * (MAX / w); w = MAX; }
+        if (h > MAX) { w = w * (MAX / h); h = MAX; }
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.round(w); canvas.height = Math.round(h);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        editBase64 = dataUrl.split(',')[1];
+        editMime = 'image/jpeg';
+        editRemoveImage = false;
+
+        document.getElementById('editPreviewImg').src = dataUrl;
+        document.getElementById('editPreviewWrap').classList.remove('hidden');
+        document.getElementById('editDropZone').classList.add('hidden');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function previewEditImage(input) {
+    if (input.files && input.files[0]) {
+      processEditImageFile(input.files[0]);
+    }
+  }
+
+  function setupEditDropZone() {
+    var dropZone = document.getElementById('editDropZone');
+    if (!dropZone) return;
+
+    ['dragenter', 'dragover'].forEach(function(evt) {
+      dropZone.addEventListener(evt, function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.add('dropzone-active');
+      }, false);
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach(function(evt) {
+      dropZone.addEventListener(evt, function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.remove('dropzone-active');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+      var dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        processEditImageFile(dt.files[0]);
+      }
+    }, false);
+
+    dropZone.addEventListener('click', function() {
+      document.getElementById('editImageInput').click();
+    });
+  }
+
+  async function handleSaveEdit() {
+    if (!currentEditItem) return;
+
+    var newId = document.getElementById('editItemId').value.trim();
+    var newName = document.getElementById('editItemName').value.trim();
+    var newCategory = document.getElementById('editItemCategory').value;
+    var newStatus = document.getElementById('editItemStatus').value;
+
+    if (!newId) {
+      Swal.fire({ icon: 'warning', title: 'กรุณาระบุรหัสอุปกรณ์' });
+      return;
+    }
+    if (!newName) {
+      Swal.fire({ icon: 'warning', title: 'กรุณาระบุชื่ออุปกรณ์' });
+      return;
+    }
+
+    setEditLoading(true);
+
+    try {
+      var payload = {
+        rowIndex: currentEditItem.rowIndex,
+        newId: newId,
+        newName: newName,
+        newCategory: newCategory,
+        newStatus: newStatus,
+        imageBase64: editBase64,
+        imageMime: editMime,
+        removeImage: editRemoveImage
+      };
+
+      var res = await apiPost('adminEditEquipment', payload);
+      setEditLoading(false);
+
+      if (res && res.success) {
+        closeEditModal();
+        closeEqDetailModal();
+        await Swal.fire({
+          icon: 'success',
+          title: 'สำเร็จ!',
+          text: res.message || 'แก้ไขข้อมูลอุปกรณ์เรียบร้อยแล้ว',
+          confirmButtonColor: '#f97316'
+        });
+        loadAdminEquipment();
+      } else {
+        throw new Error((res && res.message) || 'แก้ไขอุปกรณ์ไม่สำเร็จ');
+      }
+    } catch (err) {
+      setEditLoading(false);
+      Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+    }
+  }
+
+  function setEditLoading(loading) {
+    document.getElementById('editSubmitBtn').disabled = loading;
+    document.getElementById('editSubmitText').textContent = loading ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข';
+    document.getElementById('editSubmitSpinner').classList.toggle('hidden', !loading);
   }
 
   /* ═══ EQUIPMENT DETAIL MODAL ═══ */
@@ -655,6 +1249,16 @@
       html += '<p class="text-sm text-emerald-600 font-bold">✓ ไม่มีผู้ยืมในขณะนี้ (พร้อมใช้งาน)</p>';
       html += '</div>';
     }
+
+    html += '<div class="flex items-center gap-2 mt-5 pt-4 border-t border-gray-100">';
+    html += '<button type="button" onclick="closeEqDetailModal(); openEditModal(' + idx + ');" class="flex-1 py-2.5 px-3 bg-orange-50 hover:bg-orange-100 text-[#ea580c] text-xs font-bold rounded-xl transition-colors border border-orange-200 flex items-center justify-center gap-1.5 cursor-pointer">';
+    html += '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>';
+    html += 'แก้ไขข้อมูล</button>';
+
+    html += '<button type="button" onclick="handleDeleteSingle(' + idx + ')" class="py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl transition-colors border border-red-200 flex items-center justify-center gap-1.5 cursor-pointer">';
+    html += '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+    html += 'ลบอุปกรณ์</button>';
+    html += '</div>';
 
     document.getElementById('eqDetailBody').innerHTML = html;
     document.getElementById('eqDetailModal').classList.remove('hidden');
@@ -837,6 +1441,7 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     setupDropZone();
+    setupEditDropZone();
     initAdminSession();
   });
 
