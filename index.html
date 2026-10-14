@@ -419,7 +419,12 @@
     if (category) {
       html += '<p class="text-sm"><span class="font-bold text-gray-500">หมวดหมู่:</span> <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-bold bg-orange-50 text-[#ea580c] border border-orange-200">' + escHtml(category) + '</span></p>';
     }
-    html += '<p class="text-sm"><span class="font-bold text-gray-500">สถานะ:</span> <span class="font-bold text-amber-600">กำลังถูกยืม</span></p>';
+    var st = cat ? (cat.status || '').trim() : '';
+    var isMaint = (st === 'ส่งซ่อม/ชำรุด' || st.indexOf('ส่งซ่อม') !== -1 || st.indexOf('ชำรุด') !== -1);
+    var statusHtml = isMaint
+      ? '<span class="font-bold text-rose-600">🔧 ส่งซ่อม/ชำรุด</span>'
+      : '<span class="font-bold text-amber-600">กำลังถูกยืม</span>';
+    html += '<p class="text-sm"><span class="font-bold text-gray-500">สถานะ:</span> ' + statusHtml + '</p>';
     html += '</div>';
 
     document.getElementById('eqQuickDetailBody').innerHTML = html;

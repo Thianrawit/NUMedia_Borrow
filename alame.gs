@@ -210,7 +210,10 @@ function processBorrowSheet_(
                 .trim()
                 .toLowerCase();
               if (returnedList.indexOf(eqName) !== -1) {
-                catSheet.getRange(c + 1, 5).setValue("พร้อมใช้งาน");
+                const curSt = (catData[c][4] || "").toString().trim();
+                if (curSt !== "ส่งซ่อม/ชำรุด" && curSt.indexOf("ซ่อม") === -1 && curSt.indexOf("ชำรุด") === -1) {
+                  catSheet.getRange(c + 1, 5).setValue("พร้อมใช้งาน");
+                }
               }
             }
           }

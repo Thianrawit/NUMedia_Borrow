@@ -48,6 +48,7 @@
     .eq-card-admin.border-green { border-color: #10b981; }
     .eq-card-admin.border-yellow { border-color: #f59e0b; }
     .eq-card-admin.border-red { border-color: #ef4444; }
+    .eq-card-admin.border-maintenance { border-color: #f43f5e; background-color: #fff9f9; }
     .eq-card-admin.is-selected { border-color: #f97316 !important; background-color: #fffaf5; box-shadow: 0 0 0 2px rgba(249,115,22,.35); }
 
     .spinner { border:3px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; width:20px; height:20px; animation: spin .7s linear infinite; }
@@ -280,7 +281,7 @@
 
       <div class="mb-4">
         <h2 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">จัดการคลังอุปกรณ์</h2>
-        <p class="text-xs text-gray-500 mt-0.5">ขอบสีระบุสถานะ: <span style="color: green;">เขียว</span> = กำลังยืม, <span style="color: #ff960c;">เหลือง</span>=ถึงกำหนด, <span style="color: red;">แดง</span>=เลยกำหนด</p>
+        <p class="text-xs text-gray-500 mt-0.5">ขอบสีระบุสถานะ: <span style="color: green;">เขียว</span> = กำลังยืม, <span style="color: #ff960c;">เหลือง</span>=ถึงกำหนด, <span style="color: red;">แดง</span>=เลยกำหนด, <span style="color: #e11d48;">ชมพู/แดง</span>=ส่งซ่อม/ชำรุด</p>
       </div>
 
       <!-- Filter & Sort Toolbar -->
@@ -306,6 +307,7 @@
             <option value="BORROWED">กำลังยืม</option>
             <option value="DUE_TODAY">ถึงกำหนดคืน</option>
             <option value="OVERDUE">เลยกำหนดคืน</option>
+            <option value="MAINTENANCE">ส่งซ่อม/ชำรุด</option>
           </select>
           <div class="flex items-center gap-1.5 flex-1 sm:flex-initial">
             <span class="text-xs font-bold text-gray-400 whitespace-nowrap hidden sm:inline">จัดเรียง:</span>
@@ -709,14 +711,18 @@
         if (!matchCat) return false;
       }
       // 3. Status Filter
+      var s = (item.status || '').trim();
+      var isMaint = (s === 'ส่งซ่อม/ชำรุด' || s.indexOf('ส่งซ่อม') !== -1 || s.indexOf('ชำรุด') !== -1);
       if (st === 'AVAILABLE') {
-        if (item.borrower) return false;
+        if (item.borrower || isMaint) return false;
       } else if (st === 'BORROWED') {
         if (!item.borrower) return false;
       } else if (st === 'DUE_TODAY') {
         if (!item.borrower || item.borrower.status !== 'ถึงกำหนดคืน') return false;
       } else if (st === 'OVERDUE') {
         if (!item.borrower || item.borrower.status !== 'เลยกำหนดคืน') return false;
+      } else if (st === 'MAINTENANCE') {
+        if (!isMaint) return false;
       }
       return true;
     });
@@ -742,13 +748,13 @@
     } else if (sortBy === 'STATUS') {
       function getStatusWeight(item) {
         if (item.borrower) {
-          if (item.borrower.status === 'เลยกำหนดคืน') return 4;
-          if (item.borrower.status === 'ถึงกำหนดคืน') return 3;
-          return 2; // กำลังยืม
+          if (item.borrower.status === 'เลยกำหนดคืน') return 5;
+          if (item.borrower.status === 'ถึงกำหนดคืน') return 4;
+          return 3; // กำลังยืม
         }
         var s = (item.status || '').trim();
-        if (s === 'ถูกยืม') return 2;
-        if (s.includes('ซ่อม') || s.includes('ชำรุด')) return 1;
+        if (s === 'ถูกยืม') return 3;
+        if (s.indexOf('ซ่อม') !== -1 || s.indexOf('ชำรุด') !== -1) return 2; // ส่งซ่อม/ชำรุด
         return 0; // พร้อมใช้งาน
       }
       filtered.sort(function(a, b) {
@@ -785,12 +791,16 @@
     grid.innerHTML = items.map(function(item) {
       var realIdx = adminCatalog.indexOf(item);
       var isSelected = selectedRowIndexes.has(item.rowIndex);
+      var s = (item.status || '').trim();
+      var isMaint = (s === 'ส่งซ่อม/ชำรุด' || s.indexOf('ส่งซ่อม') !== -1 || s.indexOf('ชำรุด') !== -1);
       var borderClass = '';
       if (item.borrower) {
         var st = item.borrower.status;
         if (st === 'เลยกำหนดคืน') borderClass = 'border-red';
         else if (st === 'ถึงกำหนดคืน') borderClass = 'border-yellow';
         else borderClass = 'border-green';
+      } else if (isMaint) {
+        borderClass = 'border-maintenance';
       }
 
       var imgHtml = item.imageUrl
@@ -817,7 +827,10 @@
           '</div>' +
           (item.borrower
             ? '<p class="text-[10px] font-semibold mt-1 ' + (item.borrower.status === 'เลยกำหนดคืน' ? 'text-red-500' : item.borrower.status === 'ถึงกำหนดคืน' ? 'text-amber-600' : 'text-emerald-600') + '">' + escHtml(item.borrower.nickname) + ' ยืมอยู่</p>'
-            : '<p class="text-[10px] text-gray-400 mt-1">ว่าง</p>'
+            : (isMaint
+                ? '<p class="text-[10px] text-rose-600 font-bold mt-1 flex items-center gap-1"><span>🔧</span> ส่งซ่อม/ชำรุด</p>'
+                : '<p class="text-[10px] text-emerald-600 font-medium mt-1">พร้อมใช้งาน</p>'
+              )
           ) +
           '<div class="grid grid-cols-2 gap-1.5 mt-2" onclick="event.stopPropagation()">' +
             '<button type="button" onclick="showEqDetail(' + realIdx + ')" class="py-1 px-1.5 bg-orange-50 hover:bg-orange-100 text-[#ea580c] text-[10px] font-bold rounded-lg transition-colors border border-orange-200 flex items-center justify-center gap-1 cursor-pointer">' +
@@ -1018,10 +1031,12 @@
     // Status
     var stSelect = document.getElementById('editItemStatus');
     if (stSelect) {
-      if (item.borrower) {
+      var s = (item.status || '').trim();
+      var isMaint = (s === 'ส่งซ่อม/ชำรุด' || s.indexOf('ส่งซ่อม') !== -1 || s.indexOf('ชำรุด') !== -1);
+      if (isMaint) {
+        stSelect.value = 'ส่งซ่อม/ชำรุด';
+      } else if (item.borrower || s === 'ถูกยืม') {
         stSelect.value = 'ถูกยืม';
-      } else if (item.status) {
-        stSelect.value = item.status;
       } else {
         stSelect.value = 'พร้อมใช้งาน';
       }
@@ -1230,7 +1245,19 @@
     if (item.category) {
       html += '<p class="text-sm"><span class="font-bold text-gray-500">หมวดหมู่:</span> <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-bold bg-orange-50 text-[#ea580c] border border-orange-200">' + escHtml(item.category) + '</span></p>';
     }
-    html += '<p class="text-sm"><span class="font-bold text-gray-500">สถานะ:</span> <span class="font-semibold ' + (item.borrower ? 'text-amber-600' : 'text-emerald-600') + '">' + (item.borrower ? 'กำลังถูกยืม' : 'พร้อมใช้งาน') + '</span></p>';
+    var s = (item.status || '').trim();
+    var isMaint = (s === 'ส่งซ่อม/ชำรุด' || s.indexOf('ส่งซ่อม') !== -1 || s.indexOf('ชำรุด') !== -1);
+
+    var statusDisplay = '';
+    if (item.borrower) {
+      statusDisplay = '<span class="font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md text-xs">กำลังถูกยืม</span>';
+    } else if (isMaint) {
+      statusDisplay = '<span class="font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-md text-xs">🔧 ส่งซ่อม/ชำรุด</span>';
+    } else {
+      statusDisplay = '<span class="font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md text-xs">✓ พร้อมใช้งาน</span>';
+    }
+
+    html += '<p class="text-sm"><span class="font-bold text-gray-500">สถานะ:</span> ' + statusDisplay + '</p>';
     html += '<p class="text-sm"><span class="font-bold text-gray-500">เพิ่มเมื่อ:</span> <span class="font-semibold text-gray-900">' + escHtml(item.dateAdded) + '</span></p>';
     html += '</div>';
 
@@ -1243,6 +1270,10 @@
       html += '<p class="text-xs text-gray-600 mt-1">รหัสนิสิต: ' + escHtml(b.studentId) + '</p>';
       html += '<p class="text-xs text-gray-600">ยืม: ' + escHtml(b.borrowDate) + ' → คืน: ' + escHtml(b.dueDate) + '</p>';
       html += '<p class="text-xs font-bold mt-1 ' + (b.status === 'เลยกำหนดคืน' ? 'text-red-600' : b.status === 'ถึงกำหนดคืน' ? 'text-amber-600' : 'text-emerald-600') + '">' + escHtml(b.status) + '</p>';
+      html += '</div>';
+    } else if (isMaint) {
+      html += '<div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-center">';
+      html += '<p class="text-sm text-rose-600 font-bold">🔧 อุปกรณ์อยู่ในสถานะ ส่งซ่อม/ชำรุด (ไม่พร้อมใช้งาน)</p>';
       html += '</div>';
     } else {
       html += '<div class="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-center">';

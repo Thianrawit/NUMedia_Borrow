@@ -330,8 +330,14 @@ function getBorrowCatalog() {
   }
 
   catalog.forEach(function (c) {
+    var st = (c.status || "").trim();
+    var isMaint =
+      st === "ส่งซ่อม/ชำรุด" ||
+      st.indexOf("ส่งซ่อม") !== -1 ||
+      st.indexOf("ชำรุด") !== -1;
     var isBorrowedByBorrowSheet = !!borrowedSet[(c.name || "").toLowerCase()];
-    var isBorrowedByCatalogStatus = c.status === "ถูกยืม";
+    var isBorrowedByCatalogStatus = st === "ถูกยืม";
+    c.isMaintenance = isMaint;
     c.isBorrowed = isBorrowedByBorrowSheet || isBorrowedByCatalogStatus;
   });
 
@@ -363,6 +369,38 @@ function getCatalogRaw_() {
 // --- Submit Borrow V2 ---
 function submitBorrowV2(payload) {
   try {
+    // ตรวจสอบสถานะอุปกรณ์ใน "คลังอุปกรณ์" ว่ามีรายการส่งซ่อม/ชำรุด หรือไม่
+    var selectedList = (payload.selectedItems || "")
+      .split(",")
+      .map(function (s) {
+        return s.trim().toLowerCase();
+      })
+      .filter(Boolean);
+
+    var catSheet = sheet_(SH_CATALOG);
+    if (catSheet && selectedList.length > 0) {
+      var catData = catSheet.getDataRange().getValues();
+      for (var ck = 1; ck < catData.length; ck++) {
+        var cName = (catData[ck][1] || "").toString().trim().toLowerCase();
+        if (selectedList.indexOf(cName) !== -1) {
+          var cStatus = (catData[ck][4] || "").toString().trim();
+          if (
+            cStatus === "ส่งซ่อม/ชำรุด" ||
+            cStatus.indexOf("ส่งซ่อม") !== -1 ||
+            cStatus.indexOf("ชำรุด") !== -1
+          ) {
+            return {
+              success: false,
+              message:
+                'อุปกรณ์ "' +
+                (catData[ck][1] || "") +
+                '" อยู่ในสถานะ ส่งซ่อม/ชำรุด ไม่สามารถยืมได้',
+            };
+          }
+        }
+      }
+    }
+
     var groupUrl = uploadImage_(
       payload.groupImageBase64,
       payload.groupImageMime || "image/jpeg",
@@ -597,7 +635,14 @@ function submitReturnItem(payload) {
         for (var c = 1; c < catData.length; c++) {
           var eqName = (catData[c][1] || "").toString().trim().toLowerCase();
           if (returnedList.indexOf(eqName) !== -1) {
-            catSheet.getRange(c + 1, 5).setValue("พร้อมใช้งาน");
+            var curSt = (catData[c][4] || "").toString().trim();
+            if (
+              curSt !== "ส่งซ่อม/ชำรุด" &&
+              curSt.indexOf("ส่งซ่อม") === -1 &&
+              curSt.indexOf("ชำรุด") === -1
+            ) {
+              catSheet.getRange(c + 1, 5).setValue("พร้อมใช้งาน");
+            }
           }
         }
       }
@@ -818,7 +863,7 @@ function adminEditEquipment(payload) {
       var imgUrl = uploadImage_(
         payload.imageBase64,
         payload.imageMime || "image/jpeg",
-        "catalog"
+        "catalog",
       );
       if (imgUrl) {
         sh.getRange(rowIndex, 3).setValue(imgUrl);
@@ -839,12 +884,16 @@ function adminDeleteMultipleEquipment(rowIndexes) {
     var sh = sheet_(SH_CATALOG);
     // Deduplicate and filter valid rows (>= 2)
     var rowSet = {};
-    rowIndexes.forEach(function(r) {
+    rowIndexes.forEach(function (r) {
       var n = parseInt(r, 10);
       if (!isNaN(n) && n >= 2) rowSet[n] = true;
     });
-    var sorted = Object.keys(rowSet).map(Number).sort(function(a, b) { return b - a; });
-    
+    var sorted = Object.keys(rowSet)
+      .map(Number)
+      .sort(function (a, b) {
+        return b - a;
+      });
+
     if (sorted.length === 0) {
       return { success: false, message: "ไม่พบแถวที่สามารถลบได้" };
     }
@@ -852,7 +901,10 @@ function adminDeleteMultipleEquipment(rowIndexes) {
     for (var i = 0; i < sorted.length; i++) {
       sh.deleteRow(sorted[i]);
     }
-    return { success: true, message: "ลบอุปกรณ์สำเร็จ " + sorted.length + " รายการ" };
+    return {
+      success: true,
+      message: "ลบอุปกรณ์สำเร็จ " + sorted.length + " รายการ",
+    };
   } catch (err) {
     return { success: false, message: "เกิดข้อผิดพลาด: " + err.message };
   }
