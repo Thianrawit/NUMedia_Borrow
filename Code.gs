@@ -247,6 +247,8 @@ function getDashboardData() {
         dueDate: fmtDate_(r[13]),
         status: st,
         groupImageUrl: driveUrl_(r[10] || ""),
+        otherImageUrl: "",
+        otherDetail: "",
         imageUrls: driveUrls_(r[10] || ""),
         isLegacy: true,
       });
@@ -265,6 +267,25 @@ function getDashboardData() {
       var items2 = (r2[8] || "").toString().trim();
       var name2 = (r2[3] || "").toString().trim();
       if (!items2 && !name2) continue;
+
+      var groupImg2 = driveUrl_(r2[10] || "");
+      var otherImgs2 = driveUrls_(r2[11] || "");
+      var otherDet2 = (r2[12] || "").toString().trim();
+      var otherNames2 = otherDet2 ? otherDet2.split(",").map(function(s){ return s.trim(); }).filter(Boolean) : [];
+
+      var otherList2 = [];
+      var maxOther = Math.max(otherImgs2.length, otherNames2.length);
+      for (var oi = 0; oi < maxOther; oi++) {
+        otherList2.push({
+          name: otherNames2[oi] || ("อื่นๆ ชิ้นที่ " + (oi + 1)),
+          imageUrl: otherImgs2[oi] || (otherImgs2[0] || "")
+        });
+      }
+
+      var allImgs2 = [];
+      if (groupImg2) allImgs2.push(groupImg2);
+      otherImgs2.forEach(function(u){ if (u) allImgs2.push(u); });
+
       result.push({
         nickname: r2[4] || "",
         department: r2[6] || "",
@@ -272,8 +293,11 @@ function getDashboardData() {
         borrowDate: fmtDate_(r2[9]),
         dueDate: fmtDate_(r2[15]),
         status: st2,
-        groupImageUrl: driveUrl_(r2[10] || ""),
-        imageUrls: driveUrls_(r2[10] || ""),
+        groupImageUrl: groupImg2,
+        otherImageUrl: otherImgs2.join(", "),
+        otherDetail: otherDet2,
+        otherItems: otherList2,
+        imageUrls: allImgs2.length > 0 ? allImgs2 : (groupImg2 ? [groupImg2] : otherImgs2),
         isLegacy: false,
       });
     }
@@ -407,7 +431,26 @@ function submitBorrowV2(payload) {
       "borrow_group",
     );
     var otherUrl = "";
-    if (payload.otherImageBase64) {
+    var otherDetailVal = (payload.otherDetail || "").trim();
+
+    if (payload.otherItems && Array.isArray(payload.otherItems) && payload.otherItems.length > 0) {
+      var otherUrls = [];
+      var otherNames = [];
+      for (var oi = 0; oi < payload.otherItems.length; oi++) {
+        var itm = payload.otherItems[oi];
+        if (itm) {
+          if (itm.name) otherNames.push(itm.name.trim());
+          if (itm.base64) {
+            var u = uploadImage_(itm.base64, itm.mime || "image/jpeg", "borrow_other");
+            if (u) otherUrls.push(u);
+          }
+        }
+      }
+      otherUrl = otherUrls.join(", ");
+      if (otherNames.length > 0) {
+        otherDetailVal = otherNames.join(", ");
+      }
+    } else if (payload.otherImageBase64) {
       otherUrl = uploadImage_(
         payload.otherImageBase64,
         payload.otherImageMime || "image/jpeg",
@@ -429,7 +472,7 @@ function submitBorrowV2(payload) {
       payload.borrowDate || "", // J: วันที่ยืม
       groupUrl, // K: รูปรวมหน้างาน
       otherUrl, // L: รูปอุปกรณ์อื่นๆ
-      (payload.otherDetail || "").trim(), // M: รายละเอียดอื่นๆ
+      otherDetailVal, // M: รายละเอียดอื่นๆ
       (payload.toldWhom || "").trim(), // N: บอกใคร
       (payload.roomOpener || "").trim(), // O: ใครเปิดห้อง
       payload.dueDate || "", // P: วันที่คืน
@@ -531,14 +574,37 @@ function verifyLoginAndGetBorrows(email, studentId) {
       var st2 = (r2[16] || "").toString().trim();
       if (st2 === "คืนแล้ว") continue;
       if (!st2) st2 = "กำลังยืม";
+
+      var grpImg2 = driveUrl_(r2[10] || "");
+      var othImgs2 = driveUrls_(r2[11] || "");
+      var othDet2 = (r2[12] || "").toString().trim();
+      var othNames2 = othDet2 ? othDet2.split(",").map(function(s){ return s.trim(); }).filter(Boolean) : [];
+
+      var othList2 = [];
+      var maxOth = Math.max(othImgs2.length, othNames2.length);
+      for (var oi = 0; oi < maxOth; oi++) {
+        othList2.push({
+          name: othNames2[oi] || ("อื่นๆ ชิ้นที่ " + (oi + 1)),
+          imageUrl: othImgs2[oi] || (othImgs2[0] || "")
+        });
+      }
+
+      var allImgs2 = [];
+      if (grpImg2) allImgs2.push(grpImg2);
+      othImgs2.forEach(function(u){ if (u) allImgs2.push(u); });
+
       items.push({
         sourceSheet: SH_BORROW_V2,
         rowIndex: j + 1,
         items: (r2[8] || "").toString(),
         borrowDate: fmtDate_(r2[9]),
         dueDate: fmtDate_(r2[15]),
-        imageUrl: driveUrl_(r2[10] || ""),
-        groupImageUrl: driveUrl_(r2[10] || ""),
+        imageUrl: grpImg2 || (othImgs2[0] || ""),
+        groupImageUrl: grpImg2,
+        otherImageUrl: othImgs2.join(", "),
+        otherDetail: othDet2,
+        otherItems: othList2,
+        imageUrls: allImgs2,
         status: st2,
       });
     }

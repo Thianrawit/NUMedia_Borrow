@@ -449,17 +449,34 @@
     if (header) header.classList.remove('hidden');
 
     container.innerHTML = currentItems.map(function(item, idx) {
-      var hasImg = item.imageUrl && item.imageUrl.trim() !== '';
+      var grpImg = item.groupImageUrl || (item.imageUrls && item.imageUrls[0]) || item.imageUrl || '';
+      var othImg = item.otherImageUrl || '';
+
+      var mediaHtml = '';
+      if (grpImg && othImg) {
+        mediaHtml = '<div class="grid grid-cols-2 gap-2 p-3 bg-gray-50 border-b border-gray-100">' +
+          '<div class="relative cursor-pointer group rounded-xl overflow-hidden border border-gray-200" onclick="showImgDetail(\'' + escAttr(grpImg) + '\', \'ภาพรวมอุปกรณ์: ' + escAttr(item.items) + '\')">' +
+            '<img src="' + escHtml(grpImg) + '" alt="ภาพรวมอุปกรณ์" class="w-full h-36 object-cover" onerror="this.style.display=\'none\'" />' +
+            '<div class="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] font-bold py-1 px-2 text-center">📷 ภาพรวม</div>' +
+          '</div>' +
+          '<div class="relative cursor-pointer group rounded-xl overflow-hidden border border-orange-200" onclick="showImgDetail(\'' + escAttr(othImg) + '\', \'ภาพอุปกรณ์อื่นๆ: ' + escAttr(item.otherDetail || item.items) + '\')">' +
+            '<img src="' + escHtml(othImg) + '" alt="ภาพอุปกรณ์อื่นๆ" class="w-full h-36 object-cover" onerror="this.style.display=\'none\'" />' +
+            '<div class="absolute bottom-0 inset-x-0 bg-orange-600/80 text-white text-[10px] font-bold py-1 px-2 text-center">📷 อุปกรณ์อื่นๆ</div>' +
+          '</div>' +
+        '</div>';
+      } else if (grpImg || othImg) {
+        var singleImg = grpImg || othImg;
+        mediaHtml = '<div class="relative cursor-pointer group" onclick="showImgDetail(\'' + escAttr(singleImg) + '\', \'' + escAttr(item.items) + '\')">' +
+          '<img src="' + escHtml(singleImg) + '" alt="อุปกรณ์" class="w-full h-48 object-cover" onerror="this.style.display=\'none\'" />' +
+          '<div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-bold">' +
+            '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+            'แตะเพื่อดูรูปใหญ่' +
+          '</div>' +
+        '</div>';
+      }
+
       return '<div class="card shadow-sm fade-up" style="animation-delay:' + (idx * 60) + 'ms">' +
-        (hasImg
-          ? '<div class="relative cursor-pointer group" onclick="showImgDetail(\'' + escAttr(item.imageUrl) + '\', \'' + escAttr(item.items) + '\')">' +
-              '<img src="' + escHtml(item.imageUrl) + '" alt="อุปกรณ์" class="w-full h-48 object-cover" onerror="this.style.display=\'none\'" />' +
-              '<div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-bold">' +
-                '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
-                'แตะเพื่อดูรูปใหญ่' +
-              '</div>' +
-            '</div>'
-          : '') +
+        mediaHtml +
         '<div class="p-5 space-y-4">' +
           '<div class="flex items-start justify-between gap-2">' +
             '<div class="bg-orange-50/70 border border-orange-100 rounded-xl p-3.5 flex-1">' +

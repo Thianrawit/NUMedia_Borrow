@@ -95,6 +95,7 @@ function checkAndSendReminders() {
         itemsColIdx: 8, // Col I (idx 8): รายการอุปกรณ์
         borrowDateColIdx: 9, // Col J (idx 9): วันที่ยืม
         imgColIdx: 10, // Col K (idx 10): ลิงก์รูปภาพ
+        otherImgColIdx: 11, // Col L (idx 11): รูปอุปกรณ์อื่นๆ
         dueDateColIdx: 15, // Col P (idx 15): กำหนดคืน
         statusCol: 17, // Col Q (Col 17): สถานะ
         lastAlertCol: 18, // Col R (Col 18): แจ้งเตือนล่าสุด
@@ -211,7 +212,11 @@ function processBorrowSheet_(
                 .toLowerCase();
               if (returnedList.indexOf(eqName) !== -1) {
                 const curSt = (catData[c][4] || "").toString().trim();
-                if (curSt !== "ส่งซ่อม/ชำรุด" && curSt.indexOf("ซ่อม") === -1 && curSt.indexOf("ชำรุด") === -1) {
+                if (
+                  curSt !== "ส่งซ่อม/ชำรุด" &&
+                  curSt.indexOf("ซ่อม") === -1 &&
+                  curSt.indexOf("ชำรุด") === -1
+                ) {
                   catSheet.getRange(c + 1, 5).setValue("พร้อมใช้งาน");
                 }
               }
@@ -248,8 +253,17 @@ function processBorrowSheet_(
         // ส่งแจ้งเตือนถ้ายังไม่ได้ส่งวันนี้
         if (lastAlertStr !== todayStr && email) {
           let imageBlob = null;
+          let otherImageBlob = null;
           if (imageUrl) {
             imageBlob = getDriveImageBlob(imageUrl);
+          }
+          if (
+            config.otherImgColIdx !== undefined &&
+            row[config.otherImgColIdx]
+          ) {
+            otherImageBlob = getDriveImageBlob(
+              String(row[config.otherImgColIdx]).trim(),
+            );
           }
 
           sendEmailReminder(
@@ -260,6 +274,7 @@ function processBorrowSheet_(
             dueDate,
             isOverdue,
             imageBlob,
+            otherImageBlob,
           );
 
           sheet.getRange(i + 1, config.lastAlertCol).setValue(new Date());
@@ -409,6 +424,7 @@ function sendEmailReminder(
   dueDate,
   isOverdue,
   imageBlob,
+  otherImageBlob,
 ) {
   const dueDateFormatted = Utilities.formatDate(dueDate, "GMT+7", "dd/MM/yyyy");
   const displayName = nickname ? `${name} (${nickname})` : name;
@@ -420,7 +436,7 @@ function sendEmailReminder(
   let htmlBody = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
       <h2 style="color: ${isOverdue ? "#d32f2f" : "#1976d2"};">
-        ${isOverdue ? "⚠️ แจ้งเตือนเลยกำหนดคืนอุปกรณ์" : "📦 แจ้งเตือนกำหนดคืนอุปกรณ์วันนี้"}
+        ${isOverdue ? "⚠️ แจ้งเตือนเลยกำหนดคืนอุปกรณ์" : "⚠️ แจ้งเตือนกำหนดคืนอุปกรณ์วันนี้"}
       </h2>
       <p>สวัสดีคุณ <b>${displayName}</b>,</p>
       <p>ระบบตรวจสอบพบว่าคุณมีรายการยืมอุปกรณ์ของ <b>ชมรม NU Media</b> ที่ถึงกำหนดส่งคืน ดังนี้:</p>
@@ -444,9 +460,20 @@ function sendEmailReminder(
     inlineImagesObj["itemPic"] = imageBlob;
     attachmentsArr.push(imageBlob);
     htmlBody += `
-      <p><b>รูปภาพอุปกรณ์/หลักฐานตอนยืม:</b></p>
+      <p><b>รูปภาพรวมอุปกรณ์ตอนยืม:</b></p>
       <div style="text-align: center; margin: 15px 0;">
         <img src="cid:itemPic" style="max-width: 100%; max-height: 350px; border-radius: 6px; border: 1px solid #ccc;" />
+      </div>
+    `;
+  }
+
+  if (otherImageBlob) {
+    inlineImagesObj["otherPic"] = otherImageBlob;
+    attachmentsArr.push(otherImageBlob);
+    htmlBody += `
+      <p><b>รูปภาพอุปกรณ์อื่นๆ / อุปกรณ์นอกรายการ:</b></p>
+      <div style="text-align: center; margin: 15px 0;">
+        <img src="cid:otherPic" style="max-width: 100%; max-height: 350px; border-radius: 6px; border: 1px solid #ccc;" />
       </div>
     `;
   }

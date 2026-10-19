@@ -278,22 +278,22 @@
             <span class="text-sm font-bold text-gray-800">อื่นๆ (อุปกรณ์ที่ไม่อยู่ในรายการ)</span>
           </label>
 
-          <div id="otherSection" class="hidden mt-3 pl-8 space-y-3">
-            <div>
-              <label class="block text-xs font-bold text-gray-600 mb-1">ระบุชื่อหรือรายละเอียดอุปกรณ์</label>
-              <input id="fOtherDetail" type="text" placeholder="เช่น สาย HDMI, ปลั๊กพ่วง 5 เมตร" oninput="saveBorrowDraft()" class="input-field w-full px-3 py-2.5 rounded-xl text-sm" />
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-gray-600 mb-1">ถ่ายรูปอุปกรณ์เสริม (ลากรูปมาวางหรือแตะเพื่อเลือก)</label>
-              <div id="otherDropZone" class="border-2 border-dashed border-gray-300 hover:border-[#f97316] bg-white rounded-xl p-4 text-center cursor-pointer transition-colors" onclick="document.getElementById('otherImageInput').click()">
-                <p class="text-xs text-gray-500 font-semibold">ลากรูปมาวางที่นี่ หรือแตะเพื่อเลือกรูปภาพ</p>
+          <div id="otherSection" class="hidden mt-3 pl-8 space-y-4">
+            <!-- Quantity selector -->
+            <div class="flex items-center justify-between bg-orange-50/70 border border-orange-200 rounded-2xl p-3.5">
+              <div>
+                <span class="text-xs font-bold text-gray-800">จำนวนอุปกรณ์อื่นๆ ที่ต้องการยืม</span>
+                <p class="text-[11px] text-gray-500 mt-0.5">ระบุชื่อและแนบรูปถ่ายแยกรายชิ้น</p>
               </div>
-              <input id="otherImageInput" type="file" accept="image/*" class="hidden" onchange="previewOtherImage(this)" />
-              <div id="otherPreviewWrap" class="hidden mt-2 text-center">
-                <img id="otherPreviewImg" class="img-preview mx-auto shadow-sm border border-gray-200" />
-                <button type="button" onclick="clearOtherImage()" class="text-xs font-bold text-red-500 hover:text-red-700 mt-2 cursor-pointer border-none bg-transparent">ลบรูป</button>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="changeOtherCount(-1)" class="w-8 h-8 rounded-xl bg-white border border-gray-300 font-bold text-gray-700 hover:bg-orange-50 hover:border-orange-300 flex items-center justify-center transition-all cursor-pointer select-none text-base shadow-sm">-</button>
+                <input id="otherCountInput" type="number" min="1" max="10" value="1" readonly class="w-8 text-center font-bold text-sm bg-transparent border-none text-gray-900 focus:outline-none" />
+                <button type="button" onclick="changeOtherCount(1)" class="w-8 h-8 rounded-xl bg-white border border-gray-300 font-bold text-gray-700 hover:bg-orange-50 hover:border-orange-300 flex items-center justify-center transition-all cursor-pointer select-none text-base shadow-sm">+</button>
               </div>
             </div>
+
+            <!-- Dynamic List Container -->
+            <div id="otherItemsContainer" class="space-y-4"></div>
           </div>
         </div>
 
@@ -381,7 +381,7 @@
   var catalogItems = [];
   var currentBorrowCategory = 'ALL';
   var groupBase64 = '', groupMime = '';
-  var otherBase64 = '', otherMime = '';
+  var otherItemsData = [{ name: '', base64: '', mime: '', dataUrl: '' }];
 
   var CATEGORY_PREFIX_MAP = {
     'ไมค์': 'MIC',
@@ -652,7 +652,12 @@
   function toggleOther() {
     var show = document.getElementById('otherCheck').checked;
     document.getElementById('otherSection').classList.toggle('hidden', !show);
-    if (!show) clearOtherImage();
+    if (show) {
+      if (!otherItemsData || otherItemsData.length === 0) {
+        otherItemsData = [{ name: '', base64: '', mime: '', dataUrl: '' }];
+      }
+      renderOtherItems();
+    }
   }
 
   /* ═══ IMAGE COMPRESSION ═══ */
@@ -744,29 +749,128 @@
     document.getElementById('groupDropZone').classList.remove('hidden');
   }
 
-  function previewOtherImage(input) {
-    if (!input.files || !input.files[0]) return;
-    handleOtherImageFile(input.files[0]);
+  /* ═══ DYNAMIC OTHER ITEMS LOGIC ═══ */
+  function changeOtherCount(delta) {
+    syncOtherItemInputs();
+    var newCount = otherItemsData.length + delta;
+    if (newCount < 1) newCount = 1;
+    if (newCount > 10) newCount = 10;
+    while (otherItemsData.length < newCount) {
+      otherItemsData.push({ name: '', base64: '', mime: '', dataUrl: '' });
+    }
+    while (otherItemsData.length > newCount) {
+      otherItemsData.pop();
+    }
+    renderOtherItems();
+    saveBorrowDraft();
   }
 
-  function handleOtherImageFile(file) {
+  function syncOtherItemInputs() {
+    for (var i = 0; i < otherItemsData.length; i++) {
+      var input = document.getElementById('fOtherName_' + i);
+      if (input) {
+        otherItemsData[i].name = input.value;
+      }
+    }
+  }
+
+  function renderOtherItems() {
+    var container = document.getElementById('otherItemsContainer');
+    var countInput = document.getElementById('otherCountInput');
+    if (countInput) countInput.value = otherItemsData.length;
+    if (!container) return;
+
+    var html = '';
+    otherItemsData.forEach(function(item, idx) {
+      html += '<div class="bg-gray-50/80 border border-orange-200/80 rounded-2xl p-4 relative space-y-3 shadow-xs">';
+      html += '  <div class="flex items-center justify-between border-b border-orange-100 pb-2">';
+      html += '    <span class="text-xs font-bold text-[#ea580c] flex items-center gap-1.5">';
+      html += '      <span class="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center text-[10px]">' + (idx + 1) + '</span>';
+      html += '      อุปกรณ์อื่นๆ ชิ้นที่ ' + (idx + 1);
+      html += '    </span>';
+      if (otherItemsData.length > 1) {
+        html += '    <button type="button" onclick="removeOtherItem(' + idx + ')" class="text-xs text-red-500 hover:text-red-700 font-bold cursor-pointer border-none bg-transparent flex items-center gap-1">';
+        html += '      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> ลบชิ้นนี้';
+        html += '    </button>';
+      }
+      html += '  </div>';
+
+      // Name field
+      html += '  <div>';
+      html += '    <label class="block text-xs font-bold text-gray-700 mb-1">ชื่อหรือรายละเอียดอุปกรณ์ <span class="text-red-500">*</span></label>';
+      html += '    <input id="fOtherName_' + idx + '" type="text" placeholder="เช่น สาย HDMI, ปลั๊กพ่วง 5 เมตร" value="' + escAttr(item.name || '') + '" oninput="syncOtherItemInputs(); saveBorrowDraft();" class="input-field w-full px-3 py-2.5 rounded-xl text-sm bg-white" required />';
+      html += '  </div>';
+
+      // Image field
+      html += '  <div>';
+      html += '    <label class="block text-xs font-bold text-gray-700 mb-1">ภาพถ่ายอุปกรณ์ <span class="text-red-500">*</span></label>';
+      if (item.dataUrl) {
+        html += '    <div class="text-center bg-white border border-gray-200 rounded-xl p-3">';
+        html += '      <img src="' + escHtml(item.dataUrl) + '" class="h-32 object-contain mx-auto rounded-lg shadow-xs" />';
+        html += '      <div class="mt-2 flex items-center justify-center gap-3">';
+        html += '        <button type="button" onclick="document.getElementById(\'otherImageInput_' + idx + '\').click()" class="text-xs font-bold text-[#ea580c] hover:underline bg-transparent border-none cursor-pointer">เปลี่ยนรูป</button>';
+        html += '        <span class="text-gray-300">|</span>';
+        html += '        <button type="button" onclick="clearOtherItemImage(' + idx + ')" class="text-xs font-bold text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer">ลบรูป</button>';
+        html += '      </div>';
+        html += '    </div>';
+      } else {
+        html += '    <div id="otherDropZone_' + idx + '" ';
+        html += '      ondragover="event.preventDefault(); this.classList.add(\'border-orange-500\', \'bg-orange-50/50\');" ';
+        html += '      ondragleave="this.classList.remove(\'border-orange-500\', \'bg-orange-50/50\');" ';
+        html += '      ondrop="event.preventDefault(); this.classList.remove(\'border-orange-500\', \'bg-orange-50/50\'); if(event.dataTransfer && event.dataTransfer.files &amp;&amp; event.dataTransfer.files[0]) handleOtherItemFile(event.dataTransfer.files[0], ' + idx + ');" ';
+        html += '      onclick="document.getElementById(\'otherImageInput_' + idx + '\').click()" ';
+        html += '      class="border-2 border-dashed border-gray-300 hover:border-[#f97316] bg-white rounded-xl p-4 text-center cursor-pointer transition-colors">';
+        html += '      <svg class="w-6 h-6 mx-auto mb-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
+        html += '      <p class="text-xs text-gray-500 font-semibold">แตะเพื่อถ่ายรูป/เลือกรูป หรือลากรูปมาวาง</p>';
+        html += '    </div>';
+      }
+      html += '    <input id="otherImageInput_' + idx + '" type="file" accept="image/*" class="hidden" onchange="previewOtherItemFile(this, ' + idx + ')" />';
+      html += '  </div>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function removeOtherItem(idx) {
+    syncOtherItemInputs();
+    otherItemsData.splice(idx, 1);
+    if (otherItemsData.length === 0) {
+      otherItemsData = [{ name: '', base64: '', mime: '', dataUrl: '' }];
+    }
+    renderOtherItems();
+    saveBorrowDraft();
+  }
+
+  function previewOtherItemFile(input, idx) {
+    if (!input.files || !input.files[0]) return;
+    handleOtherItemFile(input.files[0], idx);
+  }
+
+  function handleOtherItemFile(file, idx) {
     if (!file || !file.type.match(/^image\//i)) {
       Swal.fire({ icon: 'warning', title: 'กรุณาเลือกไฟล์รูปภาพ' });
       return;
     }
     compressImage(file, function(b64, mime, dataUrl) {
-      otherBase64 = b64; otherMime = mime;
-      document.getElementById('otherPreviewImg').src = dataUrl;
-      document.getElementById('otherPreviewWrap').classList.remove('hidden');
-      document.getElementById('otherDropZone').classList.add('hidden');
+      if (!otherItemsData[idx]) {
+        otherItemsData[idx] = { name: '', base64: '', mime: '', dataUrl: '' };
+      }
+      otherItemsData[idx].base64 = b64;
+      otherItemsData[idx].mime = mime;
+      otherItemsData[idx].dataUrl = dataUrl;
+      renderOtherItems();
+      saveBorrowDraft();
     });
   }
 
-  function clearOtherImage() {
-    otherBase64 = ''; otherMime = '';
-    document.getElementById('otherImageInput').value = '';
-    document.getElementById('otherPreviewWrap').classList.add('hidden');
-    document.getElementById('otherDropZone').classList.remove('hidden');
+  function clearOtherItemImage(idx) {
+    if (otherItemsData[idx]) {
+      otherItemsData[idx].base64 = '';
+      otherItemsData[idx].mime = '';
+      otherItemsData[idx].dataUrl = '';
+    }
+    renderOtherItems();
+    saveBorrowDraft();
   }
 
   /* ═══ SETUP DRAG & DROP FOR BORROW PAGE ═══ */
@@ -794,33 +898,12 @@
       });
     }
 
-    // Other dropzone
-    var otherZone = document.getElementById('otherDropZone');
-    if (otherZone) {
-      ['dragenter', 'dragover'].forEach(function(ev) {
-        otherZone.addEventListener(ev, function(e) {
-          e.preventDefault(); e.stopPropagation();
-          otherZone.classList.add('dropzone-active');
-        });
-      });
-      ['dragleave', 'dragend', 'drop'].forEach(function(ev) {
-        otherZone.addEventListener(ev, function(e) {
-          e.preventDefault(); e.stopPropagation();
-          otherZone.classList.remove('dropzone-active');
-        });
-      });
-      otherZone.addEventListener('drop', function(e) {
-        var dt = e.dataTransfer;
-        if (dt && dt.files && dt.files.length > 0) {
-          handleOtherImageFile(dt.files[0]);
-        }
-      });
-    }
   }
 
   /* ═══ DRAFT PERSISTENCE (LOCALSTORAGE) ═══ */
   function saveBorrowDraft() {
     try {
+      syncOtherItemInputs();
       var draft = {
         agreed: document.getElementById('agreeCheck') ? document.getElementById('agreeCheck').checked : false,
         email: document.getElementById('fEmail') ? document.getElementById('fEmail').value : '',
@@ -834,7 +917,9 @@
         toldWhom: document.getElementById('fToldWhom') ? document.getElementById('fToldWhom').value : '',
         roomOpener: document.getElementById('fRoomOpener') ? document.getElementById('fRoomOpener').value : '',
         otherChecked: document.getElementById('otherCheck') ? document.getElementById('otherCheck').checked : false,
-        otherDetail: document.getElementById('fOtherDetail') ? document.getElementById('fOtherDetail').value : '',
+        otherItems: (otherItemsData || []).map(function(item) {
+          return { name: item.name || '', dataUrl: item.dataUrl || '', base64: item.base64 || '', mime: item.mime || '' };
+        }),
         selectedEquipment: selectedEquipment
       };
       localStorage.setItem('nu_borrow_draft', JSON.stringify(draft));
@@ -869,7 +954,12 @@
       if (draft.otherChecked) {
         document.getElementById('otherCheck').checked = true;
         document.getElementById('otherSection').classList.remove('hidden');
-        if (draft.otherDetail) document.getElementById('fOtherDetail').value = draft.otherDetail;
+        if (draft.otherItems && Array.isArray(draft.otherItems) && draft.otherItems.length > 0) {
+          otherItemsData = draft.otherItems;
+        } else if (draft.otherDetail) {
+          otherItemsData = [{ name: draft.otherDetail, base64: '', mime: '', dataUrl: '' }];
+        }
+        renderOtherItems();
       }
 
       if (draft.selectedEquipment && typeof draft.selectedEquipment === 'object') {
@@ -907,10 +997,43 @@
     }
 
     var selectedNames = Object.keys(selectedEquipment);
-    var otherDetail = '';
-    if (document.getElementById('otherCheck').checked) {
-      otherDetail = document.getElementById('fOtherDetail').value.trim();
-      if (otherDetail) selectedNames.push(otherDetail);
+    var otherItemsPayload = [];
+    var isOtherChecked = document.getElementById('otherCheck').checked;
+
+    if (isOtherChecked) {
+      syncOtherItemInputs();
+      if (!otherItemsData || otherItemsData.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'กรุณากรอกข้อมูลอุปกรณ์อื่นๆ', text: 'กรุณาระบุรายละเอียดอุปกรณ์อื่นๆ อย่างน้อย 1 ชิ้น' });
+        return;
+      }
+      for (var oi = 0; oi < otherItemsData.length; oi++) {
+        var itm = otherItemsData[oi];
+        var itemNum = oi + 1;
+        if (!itm.name || !itm.name.trim()) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'กรุณาระบุชื่ออุปกรณ์อื่นๆ',
+            text: 'อุปกรณ์อื่นๆ ชิ้นที่ ' + itemNum + ' ยังไม่ได้ระบุชื่อหรือรายละเอียด'
+          });
+          var targetInput = document.getElementById('fOtherName_' + oi);
+          if (targetInput) targetInput.focus();
+          return;
+        }
+        if (!itm.base64) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'กรุณาแนบรูปอุปกรณ์อื่นๆ',
+            text: 'อุปกรณ์อื่นๆ ชิ้นที่ ' + itemNum + ' (' + itm.name.trim() + ') ยังไม่ได้แนบรูปถ่าย'
+          });
+          return;
+        }
+        selectedNames.push(itm.name.trim());
+        otherItemsPayload.push({
+          name: itm.name.trim(),
+          base64: itm.base64,
+          mime: itm.mime || 'image/jpeg'
+        });
+      }
     }
 
     if (selectedNames.length === 0) {
@@ -955,9 +1078,10 @@
       selectedItems: selectedNames.join(', '),
       groupImageBase64: groupBase64,
       groupImageMime: groupMime,
-      otherImageBase64: otherBase64,
-      otherImageMime: otherMime,
-      otherDetail: document.getElementById('otherCheck').checked ? document.getElementById('fOtherDetail').value.trim() : '',
+      otherItems: otherItemsPayload,
+      otherDetail: otherItemsPayload.map(function(o){ return o.name; }).join(', '),
+      otherImageBase64: (otherItemsPayload.length > 0) ? otherItemsPayload[0].base64 : '',
+      otherImageMime: (otherItemsPayload.length > 0) ? otherItemsPayload[0].mime : '',
       agreement: 'ยอมรับข้อตกลง'
     };
 
@@ -997,6 +1121,11 @@
     var d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
+  }
+
+  function escAttr(str) {
+    if (!str) return '';
+    return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   document.addEventListener('DOMContentLoaded', function() {
